@@ -1,3 +1,4 @@
 node_modules/
 push-to-github.ps1
 .claude
+package-lock.json
