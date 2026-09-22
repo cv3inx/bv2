@@ -17,7 +17,7 @@ export class USyncQuery {
         sideList: any[];
     } | undefined;
     withDeviceProtocol(): this;
-    withContactProtocol(): this;
+    withContactProtocol(addressingMode?: 'lid' | 'pn'): this;
     withStatusProtocol(): this;
     withDisappearingModeProtocol(): this;
     withBotProfileProtocol(): this;
