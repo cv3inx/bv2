@@ -1,0 +1,70 @@
+# Publish @violetix/baileys to npmjs.
+#
+# There is no build step: lib/ and WAProto/ are compiled output committed to the repo, and
+# package.json's `files` ships exactly those plus engine-requirements.js. So this workflow only
+# authenticates and publishes.
+#
+# `preinstall` runs engine-requirements.js, which is why nothing here calls `npm install` — the
+# publish needs no dependency tree, and installing one would run a script for no reason.
+name: publish
+
+on:
+   # The normal path: tag the commit you want on npm.
+   #   npm version patch && git push --follow-tags
+   push:
+      tags: ['v*']
+   # Manual re-run, for a tag that was already pushed or a release built by hand.
+   workflow_dispatch:
+
+jobs:
+   publish:
+      runs-on: ubuntu-latest
+      steps:
+         - uses: actions/checkout@v4
+
+         - uses: actions/setup-node@v4
+           with:
+              node-version: '20'
+              # Writes the .npmrc that NODE_AUTH_TOKEN below is read through. Without this the
+              # token is ignored and the publish fails with ENEEDAUTH.
+              registry-url: 'https://registry.npmjs.org'
+
+         - name: Read name and version
+           id: pkg
+           run: |
+              echo "name=$(node -p "require('./package.json').name")" >> "$GITHUB_OUTPUT"
+              echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+         # A version already on npm can never be republished, so without this check every
+         # workflow_dispatch after the first one ends in a red EPUBLISHCONFLICT. Skipping is the
+         # honest outcome: the version is published, there is nothing to do.
+         - name: Skip if this version is already published
+           id: check
+           run: |
+              if npm view "${{ steps.pkg.outputs.name }}@${{ steps.pkg.outputs.version }}" version >/dev/null 2>&1; then
+                 echo "::notice::${{ steps.pkg.outputs.name }}@${{ steps.pkg.outputs.version }} is already on npm — bump the version in package.json to publish again"
+                 echo "skip=true" >> "$GITHUB_OUTPUT"
+              else
+                 echo "skip=false" >> "$GITHUB_OUTPUT"
+              fi
+
+         # A tag whose name disagrees with package.json is almost always a forgotten `npm version`,
+         # and the result is a release labelled v0.3.19 that publishes 0.3.18. Fail loudly instead.
+         - name: Check the tag matches package.json
+           if: github.ref_type == 'tag' && steps.check.outputs.skip == 'false'
+           run: |
+              tag="${GITHUB_REF_NAME#v}"
+              pkg="${{ steps.pkg.outputs.version }}"
+              if [ "$tag" != "$pkg" ]; then
+                 echo "::error::tag $GITHUB_REF_NAME does not match package.json version $pkg"
+                 exit 1
+              fi
+
+         - name: Publish
+           if: steps.check.outputs.skip == 'false'
+           # --access public is required for a scoped package: npm defaults a new @scope/name to
+           # restricted, which a free account cannot publish. package.json's publishConfig sets the
+           # same thing; the flag keeps it working if that is ever dropped.
+           run: npm publish --access public
+           env:
+              NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}

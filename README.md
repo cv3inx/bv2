@@ -1,18 +1,18 @@
-# 🌱 @itsliaaa/baileys
+# 🌱 @violetix/baileys
 
-[![Logo](https://files.catbox.moe/c5s9g0.jpg)](https://www.npmjs.com/package/@itsliaaa/baileys)
+[![Logo](https://files.catbox.moe/c5s9g0.jpg)](https://www.npmjs.com/package/@violetix/baileys)
 
 <p align="center">
    Enhanced Baileys v7 with fixes for newsletter media uploads, plus support for interactive messages, albums, and additional message types.
    <br><br>
-   <a href="https://www.npmjs.com/package/@itsliaaa/baileys">
-      <img src="https://img.shields.io/npm/v/@itsliaaa/baileys?style=for-the-badge&logo=npm"/>
+   <a href="https://www.npmjs.com/package/@violetix/baileys">
+      <img src="https://img.shields.io/npm/v/@violetix/baileys?style=for-the-badge&logo=npm"/>
    </a>
-   <a href="https://www.npmjs.com/package/@itsliaaa/baileys">
-      <img src="https://img.shields.io/npm/dm/@itsliaaa/baileys?style=for-the-badge&logo=npm"/>
+   <a href="https://www.npmjs.com/package/@violetix/baileys">
+      <img src="https://img.shields.io/npm/dm/@violetix/baileys?style=for-the-badge&logo=npm"/>
    </a>
-   <a href="https://github.com/itsliaaa/baileys">
-      <img src="https://img.shields.io/github/stars/itsliaaa/baileys?style=for-the-badge&logo=github"/>
+   <a href="https://github.com/cv3inx/bv2">
+      <img src="https://img.shields.io/github/stars/cv3inx/bv2?style=for-the-badge&logo=github"/>
    </a>
    <a href="LICENSE">
       <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge"/>
@@ -195,12 +195,12 @@ Support for WhatsApp features that upstream Baileys does not expose yet. **[NEW]
 ```json
 # NPM
 "dependencies": {
-   "@itsliaaa/baileys": "latest"
+   "@violetix/baileys": "latest"
 }
 
 # GitHub
 "dependencies": {
-   "@itsliaaa/baileys": "github:itsliaaa/baileys"
+   "@violetix/baileys": "github:cv3inx/bv2"
 }
 ```
 
@@ -208,26 +208,26 @@ Support for WhatsApp features that upstream Baileys does not expose yet. **[NEW]
 
 ```bash
 # NPM
-npm i @itsliaaa/baileys@latest
+npm i @violetix/baileys@latest
 
 # GitHub
-npm i github:itsliaaa/baileys
+npm i github:cv3inx/bv2
 ```
 
 #### 🧩 Import (ESM & CJS)
 
 ```javascript
 // --- ESM
-import { makeWASocket } from "@itsliaaa/baileys";
+import { makeWASocket } from "@violetix/baileys";
 
 // --- CJS (tested and working on Node.js 24 ✅)
-const { makeWASocket } = require("@itsliaaa/baileys");
+const { makeWASocket } = require("@violetix/baileys");
 ```
 
 ### 🌐 Connect to WhatsApp (Quick Step)
 
 ```javascript
-import { makeWASocket, delay, DisconnectReason, useMultiFileAuthState } from '@itsliaaa/baileys'
+import { makeWASocket, delay, DisconnectReason, useMultiFileAuthState } from '@violetix/baileys'
 import { Boom } from '@hapi/boom'
 import pino from 'pino'
 
@@ -295,7 +295,7 @@ connectToWhatsApp()
 > I highly recommend building your own data store, as keeping an entire chat history in memory can lead to excessive RAM usage.
 
 ```javascript
-import { makeWASocket, makeInMemoryStore, delay, DisconnectReason, useMultiFileAuthState } from '@itsliaaa/baileys'
+import { makeWASocket, makeInMemoryStore, delay, DisconnectReason, useMultiFileAuthState } from '@violetix/baileys'
 import { Boom } from '@hapi/boom'
 import pino from 'pino'
 
@@ -398,13 +398,13 @@ sock.sendMessage(
 );
 
 // --- Send a text message with a link preview
-const urlA = "https://www.npmjs.com/package/@itsliaaa/baileys";
+const urlA = "https://www.npmjs.com/package/@violetix/baileys";
 
 sock.sendMessage(jid, {
   text: urlA + " 👆🏻 Check it out!",
   linkPreview: {
     "matched-text": urlA,
-    title: "🌱 @itsliaaa/baileys",
+    title: "🌱 @violetix/baileys",
     description: "Underrated Baileys Fork",
     previewType: 0, // --- Use 1 for video playback in the link preview
     jpegThumbnail: fs.readFileSync("./path/to/image.jpg"),
@@ -412,9 +412,9 @@ sock.sendMessage(jid, {
 });
 
 // --- Send a text message with a large link preview and favicon
-import { prepareWAMessageMedia } from "@itsliaaa/baileys";
+import { prepareWAMessageMedia } from "@violetix/baileys";
 
-const urlB = "https://www.npmjs.com/package/@itsliaaa/baileys#readme";
+const urlB = "https://www.npmjs.com/package/@violetix/baileys#readme";
 
 const { imageMessage: image } = await prepareWAMessageMedia(
   {
@@ -436,7 +436,7 @@ sock.sendMessage(jid, {
   text: urlB + " 👆🏻 Check it out!",
   linkPreview: {
     "matched-text": urlB,
-    title: "🌱 @itsliaaa/baileys",
+    title: "🌱 @violetix/baileys",
     description: "Underrated Baileys Fork",
     previewType: 0,
     jpegThumbnail: fs.readFileSync("./path/to/image.jpg"),
@@ -600,7 +600,7 @@ sock.sendMessage(
 const inviteCode = groupUrl.split("chat.whatsapp.com/")[1]?.split("?")[0];
 
 const groupJid = "1201111111111@g.us";
-const groupName = "@itsliaaa/baileys";
+const groupName = "@violetix/baileys";
 
 sock.sendMessage(
   jid,
@@ -629,7 +629,7 @@ sock.sendMessage(jid, {
     url: "./path/to/image.jpg",
   },
   body: "👋🏻 Check my product here!",
-  footer: "@itsliaaa/baileys",
+  footer: "@violetix/baileys",
   product: {
     currencyCode: "IDR",
     description: "🛍️ Interesting product!",
@@ -637,9 +637,9 @@ sock.sendMessage(jid, {
     productId: randomUUID(),
     productImageCount: 1,
     salePriceAmount1000: 65_000_000,
-    signedUrl: "https://www.npmjs.com/package/@itsliaaa/baileys",
+    signedUrl: "https://www.npmjs.com/package/@violetix/baileys",
     title: "📦 Starseed (Premium)",
-    url: "https://www.npmjs.com/package/@itsliaaa/baileys",
+    url: "https://www.npmjs.com/package/@violetix/baileys",
   },
   businessOwnerJid: "0@s.whatsapp.net",
 });
@@ -835,7 +835,7 @@ sock.sendMessage(jid, {
 > You can easily add syntax highlighting by importing `tokenizeCode` directly from Baileys.
 
 ```javascript
-import { tokenizeCode } from "@itsliaaa/baileys";
+import { tokenizeCode } from "@violetix/baileys";
 
 const language = "javascript";
 const code = 'console.log("Hello, World!")';
@@ -896,7 +896,7 @@ sock.sendMessage(jid, {
     {
       text: "3. Modded Baileys",
       title: "Underrated Baileys Fork",
-      url: "https://www.npmjs.com/package/@itsliaaa/baileys",
+      url: "https://www.npmjs.com/package/@violetix/baileys",
     },
   ],
   footerText: "---",
@@ -1108,7 +1108,7 @@ sock.sendMessage(
     ],
     name: "📦 My Sticker Pack",
     publisher: "🌟 Lia Wynn",
-    description: "@itsliaaa/baileys",
+    description: "@violetix/baileys",
   },
   {
     quoted: message,
@@ -1126,7 +1126,7 @@ sock.sendMessage(
   jid,
   {
     text: "👆🏻 Buttons!",
-    footer: "@itsliaaa/baileys",
+    footer: "@violetix/baileys",
     buttons: [
       {
         text: "👋🏻 SignUp",
@@ -1147,7 +1147,7 @@ sock.sendMessage(
       url: "./path/to/image.jpg",
     },
     caption: "👆🏻 Buttons and Native Flow!",
-    footer: "@itsliaaa/baileys",
+    footer: "@violetix/baileys",
     buttons: [
       {
         text: "👋🏻 Rating",
@@ -1199,7 +1199,7 @@ sock.sendMessage(
   jid,
   {
     text: "📋 List!",
-    footer: "@itsliaaa/baileys",
+    footer: "@violetix/baileys",
     buttonText: "📋 Select",
     title: "👋🏻 Hello",
     sections: [
@@ -1242,12 +1242,12 @@ sock.sendMessage(
       url: "./path/to/image.jpg",
     },
     caption: "🗄️️ Interactive!",
-    footer: "@itsliaaa/baileys",
+    footer: "@violetix/baileys",
     optionText: "👉🏻 Select Options", // --- Optional, wrap all native flow into a single list
     optionTitle: "📄 Select Options", // --- Optional
     offerText: "🏷️ Newest Coupon!", // --- Optional, add an offer into message
-    offerCode: "@itsliaaa/baileys", // --- Optional
-    offerUrl: "https://www.npmjs.com/package/@itsliaaa/baileys", // --- Optional
+    offerCode: "@violetix/baileys", // --- Optional
+    offerUrl: "https://www.npmjs.com/package/@violetix/baileys", // --- Optional
     offerExpiration: Date.now() + 3_600_000, // --- Optional
     nativeFlow: [
       {
@@ -1261,11 +1261,11 @@ sock.sendMessage(
       },
       {
         text: "📋 Copy",
-        copy: "@itsliaaa/baileys",
+        copy: "@violetix/baileys",
       },
       {
         text: "🌐 Source",
-        url: "https://www.npmjs.com/package/@itsliaaa/baileys",
+        url: "https://www.npmjs.com/package/@violetix/baileys",
         useWebview: true, // --- Optional
       },
       {
@@ -1310,7 +1310,7 @@ sock.sendMessage(
   jid,
   {
     text: "🗂️ Interactive with Carousel!",
-    footer: "@itsliaaa/baileys",
+    footer: "@violetix/baileys",
     cards: [
       {
         image: {
@@ -1321,7 +1321,7 @@ sock.sendMessage(
         nativeFlow: [
           {
             text: "🌐 Source",
-            url: "https://www.npmjs.com/package/@itsliaaa/baileys",
+            url: "https://www.npmjs.com/package/@violetix/baileys",
             useWebview: true,
           },
         ],
@@ -1333,13 +1333,13 @@ sock.sendMessage(
         caption: "🖼️ Image 2",
         footer: "🏷️ Pinterest",
         offerText: "🏷️ New Coupon!",
-        offerCode: "@itsliaaa/baileys",
-        offerUrl: "https://www.npmjs.com/package/@itsliaaa/baileys",
+        offerCode: "@violetix/baileys",
+        offerUrl: "https://www.npmjs.com/package/@violetix/baileys",
         offerExpiration: Date.now() + 3_600_000,
         nativeFlow: [
           {
             text: "🌐 Source",
-            url: "https://www.npmjs.com/package/@itsliaaa/baileys",
+            url: "https://www.npmjs.com/package/@violetix/baileys",
           },
         ],
       },
@@ -1352,8 +1352,8 @@ sock.sendMessage(
         optionText: "👉🏻 Select Options",
         optionTitle: "👉🏻 Select Options",
         offerText: "🏷️ New Coupon!",
-        offerCode: "@itsliaaa/baileys",
-        offerUrl: "https://www.npmjs.com/package/@itsliaaa/baileys",
+        offerCode: "@violetix/baileys",
+        offerUrl: "https://www.npmjs.com/package/@violetix/baileys",
         offerExpiration: Date.now() + 3_600_000,
         nativeFlow: [
           {
@@ -1363,7 +1363,7 @@ sock.sendMessage(
           },
           {
             text: "🌐 Source",
-            url: "https://www.npmjs.com/package/@itsliaaa/baileys",
+            url: "https://www.npmjs.com/package/@violetix/baileys",
           },
         ],
       },
@@ -1412,7 +1412,7 @@ sock.sendMessage(
       url: "./path/to/image.jpg",
     },
     caption: "🫙 Template!",
-    footer: "@itsliaaa/baileys",
+    footer: "@violetix/baileys",
     templateButtons: [
       {
         text: "👉?? Tap Here",
@@ -1420,7 +1420,7 @@ sock.sendMessage(
       },
       {
         text: "🌐 Source",
-        url: "https://www.npmjs.com/package/@itsliaaa/baileys",
+        url: "https://www.npmjs.com/package/@violetix/baileys",
       },
       {
         text: "📞 Call",
@@ -1535,7 +1535,7 @@ sock.sendMessage(
       body: "❓ I dont know",
       thumbnail: fs.readFileSync("./path/to/image.jpg"), // --- Must in buffer format
       largeThumbnail: false, // --- Or true for bigger thumbnail
-      url: "https://www.npmjs.com/package/@itsliaaa/baileys", // --- Optional, used for WhatsApp internal thumbnail caching and direct URL
+      url: "https://www.npmjs.com/package/@violetix/baileys", // --- Optional, used for WhatsApp internal thumbnail caching and direct URL
     },
   },
   {
@@ -1583,7 +1583,7 @@ sock.sendMessage(
       text: "📃 Built manually from scratch using the raw WhatsApp proto structure",
       contextInfo: {
         externalAdReply: {
-          title: "@itsliaaa/baileys",
+          title: "@violetix/baileys",
           thumbnail: fs.readFileSync("./path/to/image.jpg"),
           sourceApp: "whatsapp",
           showAdAttribution: true,
@@ -1749,7 +1749,7 @@ console.log("🔗 Pairing code", ":", customPairingCode);
 > Automatically use available image processing library: `sharp`, `@napi-rs/image`, or `jimp`
 
 ```javascript
-import { getImageProcessingLibrary } from "@itsliaaa/baileys";
+import { getImageProcessingLibrary } from "@violetix/baileys";
 import { readFile } from "fs/promises";
 
 const lib = await getImageProcessingLibrary();
@@ -1800,7 +1800,7 @@ console.dir(output, { depth: null });
 
 ```javascript
 // --- Create a new one
-sock.newsletterCreate("@itsliaaa/baileys", "📣 Fresh updates weekly");
+sock.newsletterCreate("@violetix/baileys", "📣 Fresh updates weekly");
 
 // --- Get info
 const metadata = sock.newsletterMetadata("1231111111111@newsletter");
@@ -1834,11 +1834,11 @@ sock.newsletterChangeOwner(
 
 // --- Update newsletter
 sock.newsletterUpdate("1231111111111@newsletter", {
-  name: "@itsliaaa/baileys",
+  name: "@violetix/baileys",
 });
 
 // --- Change name
-sock.newsletterUpdateName("1231111111111@newsletter", "📦 @itsliaaa/baileys");
+sock.newsletterUpdateName("1231111111111@newsletter", "📦 @violetix/baileys");
 
 // --- Change description
 sock.newsletterUpdateDescription(
@@ -1882,7 +1882,7 @@ sock.newsletterDelete("1231111111111@newsletter");
 
 ```javascript
 // --- Create a new one and add participants using their JIDs
-const group = sock.groupCreate("@itsliaaa/baileys", [
+const group = sock.groupCreate("@violetix/baileys", [
   "628123456789@s.whatsapp.net",
 ]);
 console.dir(group, { depth: null });
@@ -1924,7 +1924,7 @@ sock.groupRequestParticipantsUpdate(
 );
 
 // --- Change name
-sock.groupUpdateSubject(jid, "📦 @itsliaaa/baileys");
+sock.groupUpdateSubject(jid, "📦 @violetix/baileys");
 
 // --- Change description
 sock.groupUpdateDescription(jid, "Updated description");
@@ -1978,7 +1978,7 @@ const group = await sock.groupGetInviteInfo("ABC123456789");
 console.log("👥 Got group info from invite code", ":", group);
 
 // --- Update bot member label
-sock.updateMemberLabel(jid, "@itsliaaa/baileys");
+sock.updateMemberLabel(jid, "@violetix/baileys");
 ```
 
 #### 👥 Community Management
@@ -1986,7 +1986,7 @@ sock.updateMemberLabel(jid, "@itsliaaa/baileys");
 ```javascript
 // --- Create a new one and add description
 const community = await sock.communityCreate(
-  "@itsliaaa/baileys",
+  "@violetix/baileys",
   "📣 Fresh updates weekly",
 );
 console.dir(community, { depth: null });
@@ -2029,7 +2029,7 @@ sock.communityRequestParticipantsUpdate(
 );
 
 // --- Change name
-sock.communityUpdateSubject(jid, "📦 @itsliaaa/baileys");
+sock.communityUpdateSubject(jid, "📦 @violetix/baileys");
 
 // --- Change description
 sock.communityUpdateDescription(jid, "Updated description");
@@ -2203,7 +2203,7 @@ console.dir(order, { depth: null });
 await sock.updateBusinessProfile({
   address: "Jakarta, Indonesia",
   description: "🛒 Official Starseed Store",
-  websites: ["https://www.npmjs.com/package/@itsliaaa/baileys"],
+  websites: ["https://www.npmjs.com/package/@violetix/baileys"],
   email: "more-more@gmail.com",
   hours: {
     timezone: "Asia/Jakarta",
@@ -2417,7 +2417,7 @@ await sock.deleteUsername();
 USync fetches user data in bulk. Chain the protocols you need onto a single query. **[NEW]**
 
 ```javascript
-import { USyncQuery, USyncUser } from "@itsliaaa/baileys";
+import { USyncQuery, USyncUser } from "@violetix/baileys";
 
 // --- Business profile, profile picture, and About text in one round trip
 const query = new USyncQuery()
@@ -2730,20 +2730,9 @@ sock.ev.on("call", ([call]) => {
 
 `status` can also be a specific end-call reason instead of a bare `terminate`: `timeout`, `reject_do_not_disturb`, `mic_permission_denied`, `camera_permission_denied`, `remote_busy`, or `remote_offline`.
 
-### 🚀 Try the Bot
-
-A fast, lightweight, and modular WhatsApp bot built with [@itsliaaa/baileys](https://www.npmjs.com/package/@itsliaaa/baileys).
-Perfect for managing groups, moderating chats, and adding fun with quiz games and handy tools.
-
-👉🏻 [@itsliaaa/starseed](https://github.com/itsliaaa/starseed#readme)
-
-A lightweight yet powerful Baileys wrapper designed to simplify development while extending support for additional message types and WhatsApp features.
-
-👉🏻 [@itsliaaa/starcore](https://www.npmjs.com/package/@itsliaaa/starcore)
-
 ### 📦 Fork Base
 
-This fork is based on [Baileys (GitHub)](https://github.com/WhiskeySockets/Baileys)
+`@violetix/baileys` is a fork of [`@itsliaaa/baileys`](https://github.com/itsliaaa/baileys) by [Lia Wynn](https://github.com/itsliaaa), which is itself based on [Baileys (GitHub)](https://github.com/WhiskeySockets/Baileys). The credits section below is kept in full, as its own notice and the MIT licence both require.
 
 ### 📣 Credits
 
