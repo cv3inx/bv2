@@ -4,7 +4,7 @@
  * @param logger to log trace events
  * @param _cache cache store to use
  */
-export function makeCacheableSignalKeyStore(store: any, logger: any, _cache: any): {
+export function makeCacheableSignalKeyStore(store: any, logger: any, _cache?: any): {
     get(type: any, ids: any): Promise<any>;
     set(data: any): Promise<any>;
     clear(): Promise<void>;
@@ -17,6 +17,7 @@ export function addTransactionCapability(state: any, logger: any, { maxCommitRet
     set: (data: any) => Promise<void>;
     isInTransaction: () => boolean;
     transaction: (work: any, key: any) => Promise<any>;
+    flush: () => Promise<void>;
 };
 export function assertMeId(creds: any): any;
 export function initAuthCreds(): {

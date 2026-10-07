@@ -44,8 +44,29 @@ export function getStream(item: any, opts: any): Promise<{
     stream: any;
     type: string;
 }>;
-export function getHttpStream(url: any, options?: {}): Promise<any>;
-export function encryptedStream(media: any, mediaType: any, { logger, saveOriginalFileIfRequired, opts }?: {}): Promise<{
+export interface MediaFetchOptions {
+    headers?: HeadersInit;
+    signal?: AbortSignal;
+    dispatcher?: unknown;
+    maxContentLength?: number;
+}
+export interface MediaEncryptionOptions {
+    logger?: {
+        debug?: (...args: any[]) => void;
+        error?: (...args: any[]) => void;
+    };
+    saveOriginalFileIfRequired?: boolean;
+    opts?: MediaFetchOptions;
+}
+export interface MediaDownloadOptions {
+    startByte?: number;
+    /** Exclusive end offset. Ranges still download and authenticate the complete media. */
+    endByte?: number;
+    options?: MediaFetchOptions;
+    host?: string;
+}
+export function getHttpStream(url: any, options?: MediaFetchOptions): Promise<any>;
+export function encryptedStream(media: any, mediaType: any, { logger, saveOriginalFileIfRequired, opts }?: MediaEncryptionOptions): Promise<{
     mediaKey: any;
     originalFilePath: any;
     encFilePath: any;
@@ -60,13 +81,19 @@ export const DEF_MEDIA_HOST: "mmg.whatsapp.net";
 export function getUrlFromDirectPath(directPath: any, host?: string): string;
 export function downloadContentFromMessage({ mediaKey, directPath, url }: {
     mediaKey: any;
-    directPath: any;
-    url: any;
-}, type: any, opts?: {}): Promise<any>;
-export function downloadEncryptedContent(downloadUrl: any, { cipherKey, iv }: {
+    directPath?: string;
+    url?: string;
+}, type: any, opts?: MediaDownloadOptions): Promise<any>;
+/**
+ * Verifies the complete media HMAC before returning a temporary-file-backed stream.
+ * Byte ranges are sliced after full download/authentication (endByte is exclusive).
+ * Consume or destroy the stream to release its temporary file.
+ */
+export function downloadEncryptedContent(downloadUrl: any, { cipherKey, iv, macKey }: {
     cipherKey: any;
     iv: any;
-}, { startByte, endByte, options }?: {}): Promise<any>;
+    macKey: any;
+}, { startByte, endByte, options }?: MediaDownloadOptions): Promise<any>;
 export function uploadWithNodeHttp({ url, filePath, headers, timeoutMs, agent }: {
     url: any;
     filePath: any;

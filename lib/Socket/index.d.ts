@@ -1,5 +1,5 @@
 export default makeWASocket;
-declare function makeWASocket(config: any): {
+declare function makeWASocket(config: import('../Types/Socket.js').SocketConfig): {
     /** from ./interop.js */
     fetchIntegrators: (...args: any[]) => any;
     acceptInteropTOS: (...args: any[]) => any;
@@ -862,18 +862,7 @@ declare function makeWASocket(config: any): {
     removeQuickReply: (timestamp: any) => Promise<void>;
     type: string;
     ws: import("./Client/websocket.js").WebSocketClient;
-    ev: {
-        process(handler: any): () => void;
-        emit(event: any, evData: any): any;
-        isBuffering(): boolean;
-        buffer: () => void;
-        flush: () => boolean;
-        createBufferedFunction(work: any): (...args: any[]) => Promise<any>;
-        on: (...args: any[]) => any;
-        off: (...args: any[]) => any;
-        removeAllListeners: (...args: any[]) => any;
-        destroy(): void;
-    };
+    ev: import('../Types/Events.js').BaileysEventEmitter;
     authState: {
         creds: any;
         keys: {
@@ -899,7 +888,7 @@ declare function makeWASocket(config: any): {
     uploadPreKeysToServerIfRequired: () => Promise<void>;
     digestKeyBundle: () => Promise<void>;
     rotateSignedPreKey: () => Promise<void>;
-    requestPairingCode: (phoneNumber: any, customPairingCode: any) => Promise<any>;
+    requestPairingCode: (phoneNumber: string, customPairingCode?: string) => Promise<string>;
     updateServerTimeOffset: ({ attrs }: {
         attrs: any;
     }) => void;

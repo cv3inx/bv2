@@ -6,6 +6,7 @@ export function useMultiFileAuthState(folder: any): Promise<{
             set: (data: any) => Promise<void>;
         };
     };
-    saveCreds: () => Promise<any>;
+    saveCreds: () => void;
+    _flushCreds: () => Promise<void>;
 }>;
 //# sourceMappingURL=use-multi-file-auth-state.d.ts.map

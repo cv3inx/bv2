@@ -1,11 +1,8 @@
 # Publish @violetix/baileys to npmjs.
 #
 # There is no build step: lib/ and WAProto/ are compiled output committed to the repo, and
-# package.json's `files` ships exactly those plus engine-requirements.js. So this workflow only
-# authenticates and publishes.
-#
-# `preinstall` runs engine-requirements.js, which is why nothing here calls `npm install` — the
-# publish needs no dependency tree, and installing one would run a script for no reason.
+# package.json's `files` ships exactly those plus engine-requirements.js.
+# Install the locked dependencies and run the package checks before publishing.
 name: publish
 
 on:
@@ -59,6 +56,10 @@ jobs:
                  echo "::error::tag $GITHUB_REF_NAME does not match package.json version $pkg"
                  exit 1
               fi
+
+         - name: Install locked dependencies for validation
+           if: steps.check.outputs.skip == 'false'
+           run: npm ci --ignore-scripts
 
          - name: Publish
            if: steps.check.outputs.skip == 'false'

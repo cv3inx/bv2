@@ -32,20 +32,20 @@ export function generateMessageIDV2(userId: any): string;
 export function generateMessageID(): string;
 export function bindWaitForConnectionUpdate(ev: any): (check: any, timeoutMs: any) => Promise<void>;
 export function fetchLatestBaileysVersion(options?: {}): Promise<{
-    version: number[];
+    version: [number, number, number];
     isLatest: boolean;
     error?: undefined;
 } | {
-    version: number[];
+    version: [number, number, number];
     isLatest: boolean;
     error: unknown;
 }>;
 export function fetchLatestWaWebVersion(options?: {}): Promise<{
-    version: number[];
+    version: [number, number, number];
     isLatest: boolean;
     error?: undefined;
 } | {
-    version: number[];
+    version: [number, number, number];
     isLatest: boolean;
     error: unknown;
 }>;

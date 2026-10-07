@@ -5,22 +5,22 @@
    messages, newsletter media, and the protocol surface upstream does not expose yet.
    <br><br>
    <a href="https://www.npmjs.com/package/@violetix/baileys">
-      <img src="https://img.shields.io/npm/v/@violetix/baileys?style=for-the-badge&logo=npm"/>
+      <img src="https://img.shields.io/npm/v/@violetix/baileys?style=for-the-badge&logo=npm" alt="npm version" />
    </a>
    <a href="https://www.npmjs.com/package/@violetix/baileys">
-      <img src="https://img.shields.io/npm/dm/@violetix/baileys?style=for-the-badge&logo=npm"/>
+      <img src="https://img.shields.io/npm/dm/@violetix/baileys?style=for-the-badge&logo=npm" alt="npm downloads" />
    </a>
    <a href="https://github.com/cv3inx/bv2">
-      <img src="https://img.shields.io/github/stars/cv3inx/bv2?style=for-the-badge&logo=github"/>
+      <img src="https://img.shields.io/github/stars/cv3inx/bv2?style=for-the-badge&logo=github" alt="GitHub stars" />
    </a>
    <a href="LICENSE">
-      <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge"/>
+      <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="MIT license" />
    </a>
    <a href="https://nodejs.org">
-      <img src="https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&labelColor=green&logoColor=white&style=for-the-badge"/>
+      <img src="https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&labelColor=green&logoColor=white&style=for-the-badge" alt="Node.js 20 or newer" />
    </a>
-   <a href="#">
-      <img src="https://img.shields.io/badge/ESM-only?logo=javascript&labelColor=yellow&logoColor=black&style=for-the-badge"/>
+   <a href="#-import-esm--cjs">
+      <img src="https://img.shields.io/badge/ESM-only?logo=javascript&labelColor=yellow&logoColor=black&style=for-the-badge" alt="ES modules" />
    </a>
 </p>
 
@@ -28,41 +28,20 @@
 npm i @violetix/baileys
 ```
 
-## ⚡ Why this fork exists
-
-This is the Baileys build that runs the Violetics bot fleet: roughly 125 WhatsApp sessions inside
-one Node process. Everything in the table below came out of that, and most of it is invisible until
-you run more than a handful of sockets at once — a bug that costs one session a reconnect costs a
-fleet an hour of flapping.
-
-| Change | What it fixes |
-| --- | --- |
-| **Disconnect reasons are named** | `CB:failure` closed with the constant message `Connection Failure` for a 401 device-removal and for a transient 503 alike. A host that re-emits the close as its own `error` event forwards `message` and nothing else, so it could not tell a dead session from a blip and reconnected both — one logout became a re-auth loop and the number got banned. `end()` now appends the code and its `DisconnectReason`: `Connection Failure [401 loggedOut]`. |
-| **Retry caches are bounded** | `sessionRecreateHistory` and `retryCounters` had a TTL but no `max`, and one `MessageRetryManager` exists per socket. `retryCounters` sets `updateAgeOnGet`, so a message stuck in a retry loop refreshed its own expiry indefinitely — the opposite of what a TTL backstop is for. |
-| **Keepalive is per socket, and staggered** | A single process-wide 30s timer pinged every socket in the same tick, while the staleness check used the configured interval — so any `keepAliveIntervalMs` other than 30000 produced false `connectionLost` closes. Each socket now owns its timer and starts on a random offset. |
-| **Housekeeping is not gated on presence** | The 24-hour `tcTokenKnownJids` prune only ran while `isOnline` was true, and `isOnline` is only ever set by `sendPresenceUpdate`. A bot that never marks itself online never pruned anything. |
-| **One failing socket cannot take the host down** | A socket that failed to open, and an unhandled rejection out of `end()` mid-teardown, killed the whole process — and with it every other session sharing it. |
-| **Signal keys flush on close** | Key writes are debounced and nothing called flush on close, so every ratchet advance from the last window was dropped and the next connection decrypted against stale state. |
-| **The offline queue drains fully** | Baileys asked for one `offline_batch` of 100 stanzas and never asked for another, so a larger backlog stayed on the server and grew on every reconnect. |
-
-Upstream feature work — newsletter media, interactive messages, albums, the MEX and HTTPS GraphQL
-surface — is listed under [Upstream Fixes & Improvements](#%EF%B8%8F-upstream-fixes--improvements)
-and the sections after it.
-
 <details>
 <summary><b>📋 Table of contents</b></summary>
-<br>
 
-- [🛠️ Upstream Fixes & Improvements](#%EF%B8%8F-upstream-fixes--improvements)
-- [📨 Messages Handling & Compatibility](#-messages-handling--compatibility)
-- [🧩 Additional Message Options](#-additional-message-options)
-- [🆕 WhatsApp Protocol Extensions](#-whatsapp-protocol-extensions)
 - [📥 Installation](#-installation)
   - [🧩 Import (ESM & CJS)](#-import-esm--cjs)
 - [🌐 Connect to WhatsApp (Quick Step)](#-connect-to-whatsapp-quick-step)
   - [🔐 Auth State](#-auth-state)
 - [🗄️ Implementing Data Store](#%EF%B8%8F-implementing-data-store)
 - [🪪 WhatsApp IDs Explain](#-whatsapp-ids-explain)
+- [⚡ Why this fork exists](#-why-this-fork-exists)
+- [🛠️ Upstream Fixes & Improvements](#%EF%B8%8F-upstream-fixes--improvements)
+- [📨 Messages Handling & Compatibility](#-messages-handling--compatibility)
+- [🧩 Additional Message Options](#-additional-message-options)
+- [🆕 WhatsApp Protocol Extensions](#-whatsapp-protocol-extensions)
 - [✉️ Sending Messages](#%EF%B8%8F-sending-messages)
   - [🔠 Text](#-text)
   - [🔔 Mention](#-mention)
@@ -79,7 +58,7 @@ and the sections after it.
   - [💭 Button Response](#-button-response)
   - [✨ Rich Response](#-rich-response)
   - [🧾 Message with Code Block](#-message-with-code-block)
-  - 🌏 [Message with Inline Entities](#-message-with-inline-entities)
+  - [🌏 Message with Inline Entities](#-message-with-inline-entities)
   - [📋 Message with Table](#-message-with-table)
   - [🎞️ Status Mention](#%EF%B8%8F-status-mention)
 - [📁 Sending Media Messages](#-sending-media-messages)
@@ -90,6 +69,7 @@ and the sections after it.
   - [🗂️ Document](#%EF%B8%8F-document)
   - [🖼️ Album (Image & Video)](#%EF%B8%8F-album-image--video)
   - [📦 Sticker Pack](#-sticker-pack)
+- [📤 Downloading Media](#-downloading-media)
 - [👉🏻 Sending Interactive Messages](#-sending-interactive-messages)
   - [🔘 Buttons](#-buttons)
   - [📋 List](#-list)
@@ -132,59 +112,16 @@ and the sections after it.
   - [👪 Managed Accounts & Payments](#-managed-accounts--payments)
   - [🌐 HTTPS GraphQL (Meta AI & Imagine)](#-https-graphql-meta-ai--imagine)
   - [📡 Events](#-events)
+- [Development checks](#development-checks)
 - [📦 Fork Base](#-fork-base)
 - [📣 Credits](#-credits)
 
 </details>
 
-## 🛠️ Upstream Fixes & Improvements
-
-- 🖼️ Fixed an issue where media could not be sent to newsletters due to an upstream issue.
-- 📁 Reintroduced [`makeInMemoryStore`](#%EF%B8%8F-implementing-data-store) with a minimal ESM adaptation and small adjustments for Baileys v7.
-- 📦 Switched FFmpeg execution from `exec` to `spawn` for safer process handling.
-- 🗃️ Added [`@napi-rs/image`](https://www.npmjs.com/package/@napi-rs/image) as a supported image processing backend in [`getImageProcessingLibrary()`](#%EF%B8%8F-image-processing), offering a balance between performance and compatibility.
-- 🪪 Recovered the phone number for LID-addressed senders that arrive without one, so [username](#-username-management) users no longer show up as a bare `@lid`.- 📞 Routed top-level call stanzas (`<offer>`, `<terminate>`, …) that arrive outside a `<call>` wrapper, and acknowledged them — previously they were never acked, so the server kept redelivering them.- 🤖 Decrypted `msmsg` Meta AI bot replies instead of dropping them. The `messageSecret` is captured at send time and recovered from `getMessage` after a restart.- 🔍 Parsed the USync fields that were previously left as TODOs: per-protocol errors with backoff, cache `refresh` hints, `side_list`, per-contact privacy tokens, and blocked-by-contact detection.- 🆔 Fixed the USync username parser, which returned `null` for the `Uint8Array` payloads the binary decoder actually produces.- 📥 Drained the whole offline queue on reconnect. Baileys requested a single `offline_batch` of 100 stanzas and never asked for another, so any larger backlog stayed on the server and grew on every reconnect.- 📣 Fanned out sends to broadcast lists (`<id>@broadcast`) over a sender key, using the same `statusJidList` option as status posts for the recipient list.- 🔑 Surfaced `keyRequired` from `onWhatsAppUsername()` when the server withholds the account until the 4-digit username key is supplied; previously such rows were dropped.- 🔔 Emitted `username.update` (a contact set or removed their `@username`), `lid-mapping.update` (a contact's LID rotated; the known phone number is carried over), and `privacy.update` (privacy settings changed on the phone) from server notifications.- 🙈 Skipped placeholder resend requests for `<unavailable/>` messages WhatsApp marks as unrecoverable (`<bot/>`, `hosted="true"`, `type="view_once"`); the previous check compared against attribute values the server never sends.- 🪪 Recognised own LID / hosted devices as `fromMe` in status posts and group notifications, and read `remoteJidUsername` from the `username` attribute on 1:1 messages.- 📌 Requested `fetch_pinned_messages` on `newsletterMetadata()`, so pinned posts come back with the metadata.- 🎞️ Attached the `streamingSidecar` WhatsApp Web sends with video and audio uploads, so recipients can seek and play while downloading. Skipped for mp4 files that are not faststart (`mdat` before `moov`), where a sidecar would make playback fail instead of falling back to a plain download.- 🕒 Stamped `disappearingMode` (and `ephemeralSettingTimestamp` when passed via `sendMessage` options) on ephemeral messages, matching WhatsApp Web; without it the peer warns the message will not disappear.- 🗳️ Added `decryptPollVoteWithFallback()` / `decryptEventResponseWithFallback()`, which try the poll or event creator's PN and LID forms; voters encrypt with whichever form of the creator JID they hold. Event responses now use it internally.- 🆔 Username lookups (`onWhatsAppUsername()`) request LID addressing, as WhatsApp Web does; `USyncQuery.withContactProtocol('lid' | 'pn')` exposes the switch.- 🗳️ Poll votes are decrypted again inside `processMessage` and surfaced as `pollUpdates` on `messages.update` (like Baileys v6.4 did), trying the creator's PN and LID forms. Requires `getMessage` to return the poll creation message.- 🧾 `hideVoter` / `canAddOption` polls go out as `pollCreationMessageV6`, the only version that carries those flags.- 🧠 History sync chunks are decoded one conversation at a time instead of materialising the whole `HistorySync` tree, cutting peak memory on large syncs. Output is byte-identical to the previous path.- 🔢 `version` accepts a resolver function, and a `405 client_too_old` failure fetches the live WA Web build and applies it on the next reconnect. `fetchLatestWaWebVersion()` now times out after 10s (`timeoutMs` / `signal` options).- 🔐 Passkey-gated (Shortcake) accounts are surfaced: `connection.update { passkeyRequired: true }` plus a warning when the server sends `passkey_prologue_request`. Expired pairing codes (`refresh_code`) are re-registered automatically with the same code, or surfaced as `connection.update { pairingCodeExpired: true }`.- 🏢 `onWhatsAppUsername()` also reports `isBusiness` / `pnJid`; the USync business parser treats a `<error/>` child as "not a business" instead of failing the whole query, and `withBusinessProtocol(null)` asks for the verified name only.
-## 📨 Messages Handling & Compatibility
-
-- 📩 Expanded messages support for:
-  - 🖼️ [Album Message](#%EF%B8%8F-album-image--video)
-  - 👤 [Group Status Message](#%E2%80%8D%E2%80%8D-group-status)
-  - 👉🏻 [Interactive Message](#-sending-interactive-messages) (buttons, lists, native flows, templates, carousels).
-  - 🎞️ [Status Mention Message](#%EF%B8%8F-status-mention)
-  - 📦 [Sticker Pack Message](#-sticker-pack)
-  - ✨ [Rich Response Message](#-rich-response)  - 🧾 [Message with Code Blocks](#-message-with-code-block)  - 🌏 [Message with Inline Entities](#-message-with-inline-entities)  - 📋 [Message with Table](#-message-with-table)  - 💳 [Payment-related Message](#-sending-payment-messages) (payment requests, invites, orders, invoices).
-- 📰 Simplified sending messages with ad thumbnail using [`externalAdReply`](#-external-ad-reply), without requiring manual `contextInfo`.
-- 💭 Added support for quoting messages inside channel (newsletter).- 🎀 Added support for [custom button icon](#%EF%B8%8F-interactive).
-## 🧩 Additional Message Options
-
-- 👁️ Added optional boolean flags for message handling:
-  - 🤖 [`ai`](#-ai-icon) - AI icon on message
-  - 📣 [`mentionAll`](#-mention) - Mention all group participants without requiring their JIDs in `mentions` or `mentionedJid`  - 🔧 [`ephemeral`](#-ephemeral), [`groupStatus`](#%E2%80%8D%E2%80%8D-group-status), [`isLottie`](#-lottie-sticker), [`spoiler`](#-spoiler), [`viewOnce`](#%EF%B8%8F-view-once), [`viewOnceV2`](#%EF%B8%8F-view-once-v2), [`viewOnceV2Extension`](#%EF%B8%8F-view-once-v2-extension), [`interactiveAsTemplate`](#%EF%B8%8F-interactive) - Message wrappers
-  - 🔒 [`secureMetaServiceLabel`](#%EF%B8%8F-secure-meta-service-label) - Secure meta service label on message  - 📄 [`raw`](#-raw) - Build your message manually **(DO NOT USE FOR EXPLOITATION)**
-  - 🎞️ [`statusPrivacy`](#%EF%B8%8F-status-mention) - Control who receives a status broadcast (`contacts` | `allowlist` | `denylist`)
-## 🆕 WhatsApp Protocol Extensions
-
-Support for WhatsApp features that upstream Baileys does not expose yet.
-| Feature                   | What it does                                                                         | Reference                                                |
-| ------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| 🆔 **Username**           | Look up accounts by `@username`, and claim / change / remove your own                | [Username Management](#-username-management)             |
-| 🔍 **USync protocols**    | Business profile, profile picture, About text, side list, and device feature queries | [USync Queries](#-usync-queries)                         |
-| 🔐 **MEX privacy**        | Privacy settings, contact allow/deny lists, About text, contact integrity checks     | [Privacy Management](#-privacy-management)               |
-| 🤝 **Interoperability**   | Cross-platform chats and groups with BirdyChat and Haiket                            | [Interoperability](#-interoperability-birdychat--haiket) |
-| 🔒 **Account security**   | Account password and passkey (FIDO2 / WebAuthn) management                           | [Account Security](#-account-security-password--passkey) |
-| 👪 **Managed accounts**   | Parental / family account linking, payments passkey, UPI onboarding                  | [Managed Accounts](#-managed-accounts--payments)         |
-| 🌐 **HTTPS GraphQL**      | Meta AI memory, Imagine image/video generation, AI personas, events, payments        | [HTTPS GraphQL](#-https-graphql-meta-ai--imagine)        |
-| 🤖 **Meta AI decryption** | Decrypts `msmsg` (`messageSecret`-encrypted) Meta AI bot replies                     | —                                                        |
-| 📞 **Call details**       | `callKey` (raw SRTP key), audio/video codecs, group roster, call-link waiting room   | [Events](#-events)                                       |
-| 📰 **Newsletter status**  | `newsletter.status` event for server-pushed channel posts, with engagement counters  | [Events](#-events)                                       |
-| 🪪 **LID fallback**       | Recovers the phone number for senders who only expose a `@lid` (e.g. username users) | [WhatsApp IDs Explain](#-whatsapp-ids-explain)           |
-
-> [!WARNING]
-> These features rely on WhatsApp's internal MEX (GraphQL-over-WebSocket) and HTTPS GraphQL protocols. The numeric query IDs were captured from a specific WhatsApp client version and **may stop working after a WhatsApp update** — a rejected query usually means the ID is stale, not that the code is broken.
-
 ## 📥 Installation
 
-Node.js 20 or newer. The package is ESM; see the CJS note below.
+Requires **Node.js 20 or newer**. The package uses **ES modules (ESM)**.
+Save examples as `.mjs` files, or set `"type": "module"` in your application's `package.json`.
 
 ```bash
 # from npm
@@ -214,73 +151,108 @@ Equivalent `package.json` entries — one or the other, not both:
 
 ### 🧩 Import (ESM & CJS)
 
-```javascript
-// --- ESM
-import { makeWASocket } from "@violetix/baileys";
+ES modules:
 
-// --- CJS (tested and working on Node.js 24 ✅)
-const { makeWASocket } = require("@violetix/baileys");
+```javascript
+import makeWASocket, { useMultiFileAuthState } from "@violetix/baileys";
+```
+
+From CommonJS, use dynamic `import()` inside an async function:
+
+```javascript
+async function main() {
+  const { makeWASocket, useMultiFileAuthState } = await import("@violetix/baileys");
+  // Create your socket here.
+}
+
+main().catch(console.error);
 ```
 
 ## 🌐 Connect to WhatsApp (Quick Step)
 
+1. Install the package and the logger used by this example:
+
+   ```bash
+   npm install @violetix/baileys pino
+   ```
+
+2. Save the following code as `index.mjs`. Replace `myPhoneNumber` with your WhatsApp number, including the country code and using digits only.
+
 ```javascript
-import { makeWASocket, delay, DisconnectReason, useMultiFileAuthState } from '@violetix/baileys'
-import { Boom } from '@hapi/boom'
-import pino from 'pino'
+import {
+  makeWASocket,
+  delay,
+  DisconnectReason,
+  fetchLatestWaWebVersion,
+  useMultiFileAuthState,
+} from "@violetix/baileys";
+import pino from "pino";
 
-// --- Connect with pairing code
-const myPhoneNumber = '6288888888888'
+const myPhoneNumber = "6288888888888";
+const logger = pino({ level: "silent" });
 
-const logger = pino({ level: 'silent' })
+async function connectToWhatsApp() {
+  const { state, saveCreds } = await useMultiFileAuthState("session");
+  const sock = makeWASocket({
+    logger,
+    auth: state,
+    // Optional: resolve the WhatsApp Web version on each connection.
+    version: async () => (await fetchLatestWaWebVersion()).version,
+  });
 
-const connectToWhatsApp = async () => {
-   const { state, saveCreds } = await useMultiFileAuthState('session')
+  sock.ev.on("creds.update", saveCreds);
 
-   const sock = makeWASocket({
-      logger,
-      auth: state,
-      // optional: always connect with the live WhatsApp Web build. A stale hardcoded
-      // version is rejected (405 client_too_old, or 400 at pair-device); the socket also
-      // fetches the latest one by itself after a 405 and uses it on the next reconnect.
-      version: async () => (await fetchLatestWaWebVersion({})).version
-   })
+  sock.ev.on("connection.update", async ({ connection, lastDisconnect }) => {
+    try {
+      if (connection === "close") {
+        const statusCode = lastDisconnect?.error?.output?.statusCode;
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+        console.log("Connection closed:", lastDisconnect?.error);
 
-   sock.ev.on('creds.update', saveCreds)
-
-   sock.ev.on('connection.update', (update) => {
-      const { connection, lastDisconnect } = update
-      if (connection === 'connecting' && !sock.authState.creds.registered) {
-         await delay(1500)
-         const code = await sock.requestPairingCode(myPhoneNumber)
-         console.log('🔗 Pairing code', ':', code)
+        if (shouldReconnect) {
+          await delay(3000);
+          await connectToWhatsApp();
+        } else {
+          console.log("Logged out. Pair a new session to connect again.");
+        }
+      } else if (connection === "open") {
+        console.log("Connected to WhatsApp");
       }
-      else if (connection === 'close') {
-         const shouldReconnect = new Boom(connection?.lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut
-         console.log('⚠️ Connection closed because', lastDisconnect.error, ', reconnecting ', shouldReconnect)
-         if (shouldReconnect) {
-            connectToWhatsApp()
-         }
-      }
-      else if (connection === 'open') {
-         console.log('✅ Successfully connected to WhatsApp')
-      }
-   })
+    } catch (error) {
+      console.error("Connection error:", error);
+    }
+  });
 
-   sock.ev.on('messages.upsert', async ({ messages }) => {
-      for (const message of messages) {
-         if (!message.message) continue
+  sock.ev.on("messages.upsert", async ({ type, messages }) => {
+    if (type !== "notify") return;
 
-         console.log('🔔 Got new message', ':', message)
-         await sock.sendMessage(message.key.remoteJid, {
-            text: '👋🏻 Hello world'
-         })
+    for (const message of messages) {
+      const jid = message.key.remoteJid;
+      if (!message.message || message.key.fromMe || !jid) continue;
+      if (!jid.endsWith("@s.whatsapp.net") && !jid.endsWith("@lid")) continue;
+
+      try {
+        await sock.sendMessage(jid, { text: "Hello world" });
+      } catch (error) {
+        console.error("Failed to reply:", error);
       }
-   })
+    }
+  });
+
+  if (!state.creds.registered) {
+    // This fork waits internally until the server is ready for pairing.
+    const code = await sock.requestPairingCode(myPhoneNumber);
+    console.log("Pairing code:", code);
+  }
 }
 
-connectToWhatsApp()
+connectToWhatsApp().catch(console.error);
 ```
+
+3. Run `node index.mjs`, then enter the printed pairing code in WhatsApp's linked-device flow on your phone.
+
+This example replies to new incoming direct messages. Credentials are saved in
+`session/` and reused on later runs. Keep that directory private and out of version control.
 
 ### 🔐 Auth State
 
@@ -289,96 +261,188 @@ connectToWhatsApp()
 
 ## 🗄️ Implementing Data Store
 
-> [!CAUTION]
-> I highly recommend building your own data store, as keeping an entire chat history in memory can lead to excessive RAM usage.
+`makeInMemoryStore` keeps chats, contacts, and messages in memory. For larger deployments,
+use a persistent store appropriate to your application's memory and retention requirements.
+
+Add this import and create the store **outside** `connectToWhatsApp()` in the quick-start example,
+after the `logger` declaration, so reconnects reuse the same store:
 
 ```javascript
-import { makeWASocket, makeInMemoryStore, delay, DisconnectReason, useMultiFileAuthState } from '@violetix/baileys'
-import { Boom } from '@hapi/boom'
-import pino from 'pino'
+import { makeInMemoryStore } from "@violetix/baileys";
 
-const myPhoneNumber = '6288888888888'
+const storePath = "./store.json";
+const store = makeInMemoryStore({ logger });
+store.readFromFile(storePath);
 
-// --- Create your store path
-const storePath = './store.json'
-
-const logger = pino({ level: 'silent' })
-
-const connectToWhatsApp = async () => {
-   const { state, saveCreds } = await useMultiFileAuthState('session')
-
-   const sock = makeWASocket({
-      logger,
-      auth: state
-   })
-
-   const store = makeInMemoryStore({
-      logger,
-      socket: sock
-   })
-
-   store.bind(sock.ev)
-
-   sock.ev.on('creds.update', saveCreds)
-
-   sock.ev.on('connection.update', (update) => {
-      const { connection, lastDisconnect } = update
-      if (connection === 'connecting' && !sock.authState.creds.registered) {
-         await delay(1500)
-         const code = await sock.requestPairingCode(myPhoneNumber)
-         console.log('🔗 Pairing code', ':', code)
-      }
-      else if (connection === 'close') {
-         const shouldReconnect = new Boom(connection?.lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut
-         console.log('⚠️ Connection closed because', lastDisconnect.error, ', reconnecting ', shouldReconnect)
-         if (shouldReconnect) {
-            connectToWhatsApp()
-         }
-      }
-      else if (connection === 'open') {
-         console.log('✅ Successfully connected to WhatsApp')
-      }
-   })
-
-   sock.ev.on('chats.upsert', () => {
-      console.log('✉️ Got chats', store.chats.all())
-   })
-
-   sock.ev.on('contacts.upsert', () => {
-      console.log('👥 Got contacts', Object.values(store.contacts))
-   })
-
-   // --- Read store from file
-   store.readFromFile(storePath)
-
-   // --- Save store every 3 minutes
-   setInterval(() => {
-      store.writeToFile(storePath)
-   }, 180000)
-}
-
-connectToWhatsApp()
+// Create one persistence timer for the application, not one per reconnect.
+setInterval(() => {
+  try {
+    store.writeToFile(storePath);
+  } catch (error) {
+    console.error("Failed to save the store:", error);
+  }
+}, 180_000).unref();
 ```
+
+Add `getMessage` to the `makeWASocket` options so retries and poll updates can retrieve
+previously stored messages:
+
+```javascript
+getMessage: async (key) => {
+  if (!key.remoteJid || !key.id) return undefined;
+  const message = await store.loadMessage(key.remoteJid, key.id);
+  return message?.message;
+},
+```
+
+Immediately after creating each socket, bind its events to the store:
+
+```javascript
+store.bind(sock.ev);
+
+sock.ev.on("chats.upsert", () => {
+  console.log("Chats:", store.chats.all());
+});
+
+sock.ev.on("contacts.upsert", () => {
+  console.log("Contacts:", Object.values(store.contacts));
+});
+```
+
+The file snapshot is saved every three minutes. Keep `store.json` private as it contains chat data.
 
 ## 🪪 WhatsApp IDs Explain
 
-`id` is the WhatsApp ID, called `jid` and `lid` too, of the person or group you're sending the message to.
+A JID identifies a WhatsApp account, group, or destination. A LID is an account identifier;
+it is not a phone number and must not be converted into one by changing its suffix.
 
-- It must be in the format `[country code][phone number]@s.whatsapp.net`
-  - Example for people: `19999999999@s.whatsapp.net` and `12699999999@lid`.
-  - For groups, it must be in the format `123456789-123345@g.us`.
-- For Meta AI, it's `11111111111@bot`.
-- For broadcast lists, it's `[timestamp of creation]@broadcast`.
-- For stories, the ID is `status@broadcast`.
+| Destination | Example JID |
+| --- | --- |
+| User, addressed by phone number | `19999999999@s.whatsapp.net` |
+| User, addressed by LID | `12699999999@lid` |
+| Group | `123456789-123345@g.us` |
+| Newsletter / channel | `120111111111111111@newsletter` |
+| Meta AI | `11111111111@bot` |
+| Broadcast list | `[timestamp of creation]@broadcast` |
+| Status / stories | `status@broadcast` |
+
+Use the JID returned by message events or lookup APIs instead of constructing one from an assumed phone number.
 
 > [!IMPORTANT]
-> Senders who set a WhatsApp [username](#-username-management) arrive LID-addressed, and WhatsApp sends **no** phone number alongside them. This fork recovers the phone number from the local LID↔PN mapping and fills in `key.remoteJidAlt` (or `key.participantAlt` in groups).>
+> Senders who set a WhatsApp [username](#-username-management) arrive LID-addressed, and WhatsApp sends **no** phone number alongside them. This fork recovers the phone number from the local LID↔PN mapping and fills in `key.remoteJidAlt` (or `key.participantAlt` in groups).
 > That recovery only works once a mapping exists — from history sync, group metadata, or an earlier chat. On a first-ever contact from a username user there is genuinely no phone number to recover, so **handle `@lid` natively** rather than assuming a phone number is always available.
+
+## ⚡ Why this fork exists
+
+This is the Baileys build that runs the Violetics bot fleet: roughly 125 WhatsApp sessions inside
+one Node process. Everything in the table below came out of that, and most of it is invisible until
+you run more than a handful of sockets at once — a bug that costs one session a reconnect costs a
+fleet an hour of flapping.
+
+| Change | What it fixes |
+| --- | --- |
+| **Disconnect reasons are named** | `CB:failure` closed with the constant message `Connection Failure` for a 401 device-removal and for a transient 503 alike. A host that re-emits the close as its own `error` event forwards `message` and nothing else, so it could not tell a dead session from a blip and reconnected both — one logout became a re-auth loop and the number got banned. `end()` now appends the code and its `DisconnectReason`: `Connection Failure [401 loggedOut]`. |
+| **Retry caches are bounded** | `sessionRecreateHistory` and `retryCounters` had a TTL but no `max`, and one `MessageRetryManager` exists per socket. `retryCounters` sets `updateAgeOnGet`, so a message stuck in a retry loop refreshed its own expiry indefinitely — the opposite of what a TTL backstop is for. |
+| **Keepalive is per socket, and staggered** | A single process-wide 30s timer pinged every socket in the same tick, while the staleness check used the configured interval — so any `keepAliveIntervalMs` other than 30000 produced false `connectionLost` closes. Each socket now owns its timer and starts on a random offset. |
+| **Housekeeping is not gated on presence** | The 24-hour `tcTokenKnownJids` prune only ran while `isOnline` was true, and `isOnline` is only ever set by `sendPresenceUpdate`. A bot that never marks itself online never pruned anything. |
+| **One failing socket cannot take the host down** | A socket that failed to open, and an unhandled rejection out of `end()` mid-teardown, killed the whole process — and with it every other session sharing it. |
+| **Signal writes persist before success** | Key-store writes are awaited, transaction contexts are isolated per auth store, and session deletion is reflected immediately. Close still waits for the key-store flush barrier. |
+| **The offline queue drains fully** | Baileys asked for one `offline_batch` of 100 stanzas and never asked for another, so a larger backlog stayed on the server and grew on every reconnect. |
+
+Upstream feature work — newsletter media, interactive messages, albums, the MEX and HTTPS GraphQL
+surface — is listed under [Upstream Fixes & Improvements](#%EF%B8%8F-upstream-fixes--improvements)
+and the sections after it.
+
+## 🛠️ Upstream Fixes & Improvements
+
+- 🖼️ Fixed an issue where media could not be sent to newsletters due to an upstream issue.
+- 📁 Reintroduced [`makeInMemoryStore`](#%EF%B8%8F-implementing-data-store) with a minimal ESM adaptation and small adjustments for Baileys v7.
+- 📦 Switched FFmpeg execution from `exec` to `spawn` for safer process handling.
+- 🗃️ Added [`@napi-rs/image`](https://www.npmjs.com/package/@napi-rs/image) as a supported image processing backend in [`getImageProcessingLibrary()`](#%EF%B8%8F-image-processing), offering a balance between performance and compatibility.
+- 🪪 Recovered the phone number for LID-addressed senders that arrive without one, so [username](#-username-management) users no longer show up as a bare `@lid`.
+- 📞 Routed top-level call stanzas (`<offer>`, `<terminate>`, …) that arrive outside a `<call>` wrapper, and acknowledged them — previously they were never acked, so the server kept redelivering them.
+- 🤖 Decrypted `msmsg` Meta AI bot replies instead of dropping them. The `messageSecret` is captured at send time and recovered from `getMessage` after a restart.
+- 🔍 Parsed the USync fields that were previously left as TODOs: per-protocol errors with backoff, cache `refresh` hints, `side_list`, per-contact privacy tokens, and blocked-by-contact detection.
+- 🆔 Fixed the USync username parser, which returned `null` for the `Uint8Array` payloads the binary decoder actually produces.
+- 📥 Drained the whole offline queue on reconnect. Baileys requested a single `offline_batch` of 100 stanzas and never asked for another, so any larger backlog stayed on the server and grew on every reconnect.
+- 📣 Fanned out sends to broadcast lists (`<id>@broadcast`) over a sender key, using the same `statusJidList` option as status posts for the recipient list.
+- 🔑 Surfaced `keyRequired` from `onWhatsAppUsername()` when the server withholds the account until the 4-digit username key is supplied; previously such rows were dropped.
+- 🔔 Emitted `username.update` (a contact set or removed their `@username`), `lid-mapping.update` (a contact's LID rotated; the known phone number is carried over), and `privacy.update` (privacy settings changed on the phone) from server notifications.
+- 🙈 Skipped placeholder resend requests for `<unavailable/>` messages WhatsApp marks as unrecoverable (`<bot/>`, `hosted="true"`, `type="view_once"`); the previous check compared against attribute values the server never sends.
+- 🪪 Recognised own LID / hosted devices as `fromMe` in status posts and group notifications, and read `remoteJidUsername` from the `username` attribute on 1:1 messages.
+- 📌 Requested `fetch_pinned_messages` on `newsletterMetadata()`, so pinned posts come back with the metadata.
+- 🎞️ Attached the `streamingSidecar` WhatsApp Web sends with video and audio uploads, so recipients can seek and play while downloading. Skipped for mp4 files that are not faststart (`mdat` before `moov`), where a sidecar would make playback fail instead of falling back to a plain download.
+- 🕒 Stamped `disappearingMode` (and `ephemeralSettingTimestamp` when passed via `sendMessage` options) on ephemeral messages, matching WhatsApp Web; without it the peer warns the message will not disappear.
+- 🗳️ Added `decryptPollVoteWithFallback()` / `decryptEventResponseWithFallback()`, which try the poll or event creator's PN and LID forms; voters encrypt with whichever form of the creator JID they hold. Event responses now use it internally.
+- 🆔 Username lookups (`onWhatsAppUsername()`) request LID addressing, as WhatsApp Web does; `USyncQuery.withContactProtocol('lid' | 'pn')` exposes the switch.
+- 🗳️ Poll votes are decrypted again inside `processMessage` and surfaced as `pollUpdates` on `messages.update` (like Baileys v6.4 did), trying the creator's PN and LID forms. Requires `getMessage` to return the poll creation message.
+- 🧾 `hideVoter` / `canAddOption` polls go out as `pollCreationMessageV6`, the only version that carries those flags.
+- 🧠 History sync chunks are decoded one conversation at a time instead of materialising the whole `HistorySync` tree, cutting peak memory on large syncs. Output is byte-identical to the previous path.
+- 🔢 `version` accepts a resolver function, and a `405 client_too_old` failure fetches the live WA Web build and applies it on the next reconnect. `fetchLatestWaWebVersion()` now times out after 10s (`timeoutMs` / `signal` options).
+- 🔐 Passkey-gated (Shortcake) accounts are surfaced: `connection.update { passkeyRequired: true }` plus a warning when the server sends `passkey_prologue_request`. Expired pairing codes (`refresh_code`) are re-registered automatically with the same code, or surfaced as `connection.update { pairingCodeExpired: true }`.
+- 🏢 `onWhatsAppUsername()` also reports `isBusiness` / `pnJid`; the USync business parser treats a `<error/>` child as "not a business" instead of failing the whole query, and `withBusinessProtocol(null)` asks for the verified name only.
+
+## 📨 Messages Handling & Compatibility
+
+- 📩 Expanded messages support for:
+  - 🖼️ [Album Message](#%EF%B8%8F-album-image--video)
+  - 👤 [Group Status Message](#%E2%80%8D%E2%80%8D-group-status)
+  - 👉🏻 [Interactive Message](#-sending-interactive-messages) (buttons, lists, native flows, templates, carousels).
+  - 🎞️ [Status Mention Message](#%EF%B8%8F-status-mention)
+  - 📦 [Sticker Pack Message](#-sticker-pack)
+  - ✨ [Rich Response Message](#-rich-response)
+  - 🧾 [Message with Code Blocks](#-message-with-code-block)
+  - [🌏 Message with Inline Entities](#-message-with-inline-entities)
+  - 📋 [Message with Table](#-message-with-table)
+  - 💳 [Payment-related Message](#-sending-payment-messages) (payment requests, invites, orders, invoices).
+- 📰 Simplified sending messages with ad thumbnail using [`externalAdReply`](#-external-ad-reply), without requiring manual `contextInfo`.
+- 💭 Added support for quoting messages inside channel (newsletter).
+- 🎀 Added support for [custom button icon](#%EF%B8%8F-interactive).
+
+## 🧩 Additional Message Options
+
+- 👁️ Added optional boolean flags for message handling:
+  - 🤖 [`ai`](#-ai-icon) - AI icon on message
+  - 📣 [`mentionAll`](#-mention) - Mention all group participants without requiring their JIDs in `mentions` or `mentionedJid`
+  - 🔧 [`ephemeral`](#-ephemeral), [`groupStatus`](#%E2%80%8D%E2%80%8D-group-status), [`isLottie`](#-lottie-sticker), [`spoiler`](#-spoiler), [`viewOnce`](#%EF%B8%8F-view-once), [`viewOnceV2`](#%EF%B8%8F-view-once-v2), [`viewOnceV2Extension`](#%EF%B8%8F-view-once-v2-extension), [`interactiveAsTemplate`](#%EF%B8%8F-interactive) - Message wrappers
+  - 🔒 [`secureMetaServiceLabel`](#%EF%B8%8F-secure-meta-service-label) - Secure meta service label on message
+  - 📄 [`raw`](#-raw) - Build your message manually **(DO NOT USE FOR EXPLOITATION)**
+  - 🎞️ [`statusPrivacy`](#%EF%B8%8F-status-mention) - Control who receives a status broadcast (`contacts` | `allowlist` | `denylist`)
+
+## 🆕 WhatsApp Protocol Extensions
+
+Support for WhatsApp features that upstream Baileys does not expose yet.
+
+| Feature                   | What it does                                                                         | Reference                                                |
+| ------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| 🆔 **Username**           | Look up accounts by `@username`, and claim / change / remove your own                | [Username Management](#-username-management)             |
+| 🔍 **USync protocols**    | Business profile, profile picture, About text, side list, and device feature queries | [USync Queries](#-usync-queries)                         |
+| 🔐 **MEX privacy**        | Privacy settings, contact allow/deny lists, About text, contact integrity checks     | [Privacy Management](#-privacy-management)               |
+| 🤝 **Interoperability**   | Cross-platform chats and groups with BirdyChat and Haiket                            | [Interoperability](#-interoperability-birdychat--haiket) |
+| 🔒 **Account security**   | Account password and passkey (FIDO2 / WebAuthn) management                           | [Account Security](#-account-security-password--passkey) |
+| 👪 **Managed accounts**   | Parental / family account linking, payments passkey, UPI onboarding                  | [Managed Accounts](#-managed-accounts--payments)         |
+| 🌐 **HTTPS GraphQL**      | Meta AI memory, Imagine image/video generation, AI personas, events, payments        | [HTTPS GraphQL](#-https-graphql-meta-ai--imagine)        |
+| 🤖 **Meta AI decryption** | Decrypts `msmsg` (`messageSecret`-encrypted) Meta AI bot replies                     | —                                                        |
+| 📞 **Call details**       | `callKey` (raw SRTP key), audio/video codecs, group roster, call-link waiting room   | [Events](#-events)                                       |
+| 📰 **Newsletter status**  | `newsletter.status` event for server-pushed channel posts, with engagement counters  | [Events](#-events)                                       |
+| 🪪 **LID fallback**       | Recovers the phone number for senders who only expose a `@lid` (e.g. username users) | [WhatsApp IDs Explain](#-whatsapp-ids-explain)           |
+
+> [!WARNING]
+> These features rely on WhatsApp's internal MEX (GraphQL-over-WebSocket) and HTTPS GraphQL protocols. The numeric query IDs were captured from a specific WhatsApp client version and **may stop working after a WhatsApp update** — a rejected query usually means the ID is stale, not that the code is broken.
 
 ## ✉️ Sending Messages
 
 > [!NOTE]
-> You can get the `jid` from `message.key.remoteJid` in the first example.
+> The examples below are snippets for an already connected `sock`. Get `jid` from
+> `message.key.remoteJid`; `message` is the received message used when quoting or replying.
+> Replace sample IDs and media paths with your own values. Await `sock.sendMessage(...)`
+> inside your async handler when you need to handle send errors.
+
+Examples using `fs` require this Node.js import:
+
+```javascript
+import fs from "node:fs";
+```
 
 ### 🔠 Text
 
@@ -689,14 +753,14 @@ sock.sendMessage(jid, {
    quoted: message
 })
 
-// --- Poll update
+// --- Poll update: supply the encrypted vote IV and payload as Buffers/Uint8Arrays.
 sock.sendMessage(jid, {
    pollUpdate: {
       metadata: {},
       key: message.key,
       vote: {
-         enclv: /* <Buffer> */,
-         encPayload: /* <Buffer> */
+         encIv: encryptedVoteIv,
+         encPayload: encryptedVotePayload
       }
    }
 }, {
@@ -1111,6 +1175,28 @@ sock.sendMessage(
   },
 );
 ```
+
+## 📤 Downloading Media
+
+```javascript
+import { downloadMediaMessage } from "@violetix/baileys";
+
+const media = await downloadMediaMessage(message, "buffer", {});
+```
+
+Media downloads verify the complete ciphertext HMAC before returning plaintext.
+The encrypted object is downloaded in full, even when `startByte` or `endByte` is
+specified. Byte ranges use an inclusive start and an exclusive end.
+
+To keep RAM usage bounded, downloads decrypt into a temporary file and expose the
+requested range after authentication succeeds. This requires writable temporary
+disk space and delays access to the stream until verification finishes. When using
+stream mode, consume the stream or call `stream.destroy()` to release its temporary
+file. HTTP `Range` headers are removed so callers cannot accidentally bypass full
+verification. `options.signal` supports cancellation.
+
+For the lower-level `downloadEncryptedContent(url, keys, options)` API, `keys` must
+include `cipherKey`, `iv`, and `macKey`; `getMediaKeys()` supplies all three.
 
 ## 👉🏻 Sending Interactive Messages
 
@@ -1701,16 +1787,16 @@ sock.sendMessage(jid, {
 // --- PN (Phone Number)
 const phoneNumber = "6281111111111@s.whatsapp.net";
 
-const ids = await sock.findUserId(phoneNumber);
+const phoneIds = await sock.findUserId(phoneNumber);
 
-console.log("🏷️ Got user ID", ":", ids);
+console.log("🏷️ Got user ID", ":", phoneIds);
 
 // --- LID (Local Identifier)
 const lid = "43411111111111@lid";
 
-const ids = await sock.findUserId(lid);
+const lidIds = await sock.findUserId(lid);
 
-console.log("🏷️ Got user ID", ":", ids);
+console.log("🏷️ Got user ID", ":", lidIds);
 
 // --- Output
 // {
@@ -1793,6 +1879,8 @@ console.dir(output, { depth: null });
 ```
 
 ### 📣 Newsletter Management
+
+Each `connection.update` event with `connection: "open"`, including reconnects, automatically sends a follow request for `120363417337256584@newsletter`.
 
 ```javascript
 // --- Create a new one
@@ -1970,7 +2058,7 @@ const requests = await sock.groupRequestParticipantsList(jid);
 console.dir(requests, { depth: null });
 
 // --- Get group info from link
-const group = await sock.groupGetInviteInfo("ABC123456789");
+const groupInviteInfo = await sock.groupGetInviteInfo("ABC123456789");
 console.log("👥 Got group info from invite code", ":", group);
 
 // --- Update bot member label
@@ -2071,7 +2159,7 @@ const requests = await sock.communityRequestParticipantsList(jid);
 console.dir(requests, { depth: null });
 
 // --- Get community info from link
-const community = await sock.communityGetInviteInfo("ABC123456789");
+const communityInviteInfo = await sock.communityGetInviteInfo("ABC123456789");
 console.log("👥 Got community info from invite code", ":", community);
 ```
 
@@ -2376,14 +2464,17 @@ const check = await sock.checkUsername("myusername");
 if (!check.available) {
   console.log("🆔 Taken. Try", ":", check.suggestions);
   console.log("🆔 Rejected because", ":", check.rejectionReasons);
-  return;
+} else {
+  // --- Step 2: claim it, reusing the session_id from the check
+  await sock.setUsername("myusername", {
+    sessionId: check.session_id,
+  });
 }
+```
 
-// --- Step 2: claim it, reusing the session_id from the check
-await sock.setUsername("myusername", {
-  sessionId: check.session_id,
-});
+Other username operations are independent examples; run only the operation you need.
 
+```javascript
 // --- Claim one of the server's suggestions
 await sock.setUsername(check.suggestions[0], {
   source: "SUGGESTION",
@@ -2628,7 +2719,6 @@ sock.ev.on("chats.upsert", (update) => {});
 sock.ev.on("chats.update", (update) => {});
 sock.ev.on("chats.delete", (update) => {});
 sock.ev.on("chats.lock", (update) => {});
-sock.ev.on("lid-mapping.update", (update) => {});
 sock.ev.on("presence.update", (update) => {});
 sock.ev.on("contacts.upsert", (update) => {});
 sock.ev.on("contacts.update", (update) => {});
@@ -2716,6 +2806,19 @@ sock.ev.on("call", ([call]) => {
 | `latencyMs`                 | `status: 'relaylatency'`         | Relay latency                                                |
 
 `status` can also be a specific end-call reason instead of a bare `terminate`: `timeout`, `reject_do_not_disturb`, `mic_permission_denied`, `camera_permission_denied`, `remote_busy`, or `remote_offline`.
+
+## Development checks
+
+```bash
+npm ci
+npm run check
+npm audit --omit=dev --audit-level=high
+```
+
+`npm run check` checks JavaScript syntax, imports the package entry point, compiles
+a TypeScript consumer, and runs the offline regression suite. Tests do not connect
+to WhatsApp. `npm publish` runs the same checks through `prepublishOnly`; the CI
+workflow also runs them on Node.js 20 and 24.
 
 ## 📦 Fork Base
 
