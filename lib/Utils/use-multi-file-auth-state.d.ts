@@ -1,4 +1,4 @@
-export function useMultiFileAuthState(folder: any): Promise<{
+export function useMultiFileAuthState(folder: any, logger?: any): Promise<{
     state: {
         creds: any;
         keys: {
@@ -8,5 +8,6 @@ export function useMultiFileAuthState(folder: any): Promise<{
     };
     saveCreds: () => void;
     _flushCreds: () => Promise<void>;
+    _destroy: () => void;
 }>;
 //# sourceMappingURL=use-multi-file-auth-state.d.ts.map

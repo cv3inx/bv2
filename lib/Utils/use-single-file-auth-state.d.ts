@@ -1,4 +1,4 @@
-export function useSingleFileAuthState(fileName: any): Promise<{
+export function useSingleFileAuthState(fileName: any, logger?: any): Promise<{
     state: {
         creds: any;
         keys: {

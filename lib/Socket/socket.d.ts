@@ -25,6 +25,12 @@ export function makeSocket(config: any): {
     signalRepository: any;
     readonly user: any;
     generateMessageTag: () => string;
+    /**
+     * Drops matching inbound stanzas before any handler — including the decryption and
+     * persistence paths — sees them. The ack is still sent so the server stops re-delivering.
+     * Returns an unregister function.
+     */
+    ignoreKey: (input: import('../Utils/ignore-key.js').WaIgnoreKeyInput) => () => void;
     query: (node: any, timeoutMs: any) => Promise<any>;
     waitForMessage: (msgId: any, timeoutMs?: any) => Promise<any>;
     waitForSocketOpen: () => Promise<void>;

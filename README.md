@@ -381,6 +381,14 @@ and the sections after it.
 - 🔢 `version` accepts a resolver function, and a `405 client_too_old` failure fetches the live WA Web build and applies it on the next reconnect. `fetchLatestWaWebVersion()` now times out after 10s (`timeoutMs` / `signal` options).
 - 🔐 Passkey-gated (Shortcake) accounts are surfaced: `connection.update { passkeyRequired: true }` plus a warning when the server sends `passkey_prologue_request`. Expired pairing codes (`refresh_code`) are re-registered automatically with the same code, or surfaced as `connection.update { pairingCodeExpired: true }`.
 - 🏢 `onWhatsAppUsername()` also reports `isBusiness` / `pnJid`; the USync business parser treats a `<error/>` child as "not a business" instead of failing the whole query, and `withBusinessProtocol(null)` asks for the verified name only.
+- 🖼️ Added [image polls](#%EF%B8%8F-image-poll): `sendMessage(jid, { imagePoll })` uploads one image per option, hashes each option over its uploaded `fileSha256`, sends the `pollCreationMessageV3` parent with `pollContentType: IMAGE`, then one `pollCreationOptionImageMessage` child per option associated back by `MEDIA_POLL`. `hashImagePollOption()` is exported separately. Ported from [`@rennzsync/baileys`](https://github.com/RennZSync/baileys).
+- 🧩 Added [A2UI widgets](#-a2ui-widget): `sendMessage(jid, { a2ui })` with a declarative builder (`Text`, `Image`, `Video`, `Button`, `Card`, `Column`, `Row`, `Divider`, `CheckBox`, `TextField`, `ChoicePicker`, plus `listCard`) compiled into `interactiveMessage.bloksWidget`. Ported from [`@rennzsync/baileys`](https://github.com/RennZSync/baileys), rebuilt on this fork's own interactive path so the `<biz>` node and button shapes are the existing ones.
+- 🙊 Added the [`exclusive`](#-exclusive-message) send option: a group message addressed to a single member (`to=<group> participant=<member>`, per-device encryption instead of the group sender key), so no other member receives the stanza. The recipient comes from the quoted message's author, or from an explicit jid.
+- 🚫 Added [`sock.ignoreKey()`](#-ignoring-inbound-stanzas): drops matching inbound stanzas before any handler — including the decryption and persistence paths — while still acking so the server stops redelivering. Matches by `remoteJid` / `fromMe` / `id` / `participant` (PN ↔ LID alt attributes included) or by predicate, over `message`, `receipt`, `notification`, `presence`, `chatstate` and `call`. `category='peer'` traffic from your own devices is never dropped, so an app-state key share cannot be filtered away by accident.
+- 🛡️ Added [`createAnchorGuard()`](#%EF%B8%8F-anchor-guard) / `detectBug()`: flags payloads that force-close WhatsApp clients — invisible and combining character floods, mention bombs, oversized native-flow / list / carousel payloads, broken `buttonParamsJson`, over-deep or circular structures — then deletes them and optionally blocks the sender or kicks on burst. Ported from [`@rexxhayanasi/elaina-anchorguard`](https://www.npmjs.com/package/@rexxhayanasi/elaina-anchorguard) (MIT) via [`@rennzsync/baileys`](https://github.com/RennZSync/baileys).
+- 🗓️ Sent `encEventResponseMessage` and `EVENT_EDIT` secrets as `type=event`. Only `eventMessage` was matched, so event responses went out as `type=text` — a pairing a real client never sends, and the server validates stanza shape.
+- 🧾 Stamped `mediatype=group_history` on `messageHistoryBundle` sends, which previously carried no media type at all.
+- 🔑 `useMultiFileAuthState(folder, logger)` and `useSingleFileAuthState(file, logger)` accept a logger. Credential write failures were swallowed entirely (the internal logger was hard-wired to `null`), so a full disk or a permission error lost the session and looked like a random logout on the next boot. Corrupt or unreadable key files are reported too, and `_destroy()` releases the process exit hooks a long-lived multi-session host would otherwise leak.
 
 ## 📨 Messages Handling & Compatibility
 
@@ -390,6 +398,8 @@ and the sections after it.
   - 👉🏻 [Interactive Message](#-sending-interactive-messages) (buttons, lists, native flows, templates, carousels).
   - 🎞️ [Status Mention Message](#%EF%B8%8F-status-mention)
   - 📦 [Sticker Pack Message](#-sticker-pack)
+  - 🖼️ [Image Poll](#%EF%B8%8F-image-poll)
+  - 🧩 [A2UI Widget](#-a2ui-widget)
   - ✨ [Rich Response Message](#-rich-response)
   - 🧾 [Message with Code Blocks](#-message-with-code-block)
   - [🌏 Message with Inline Entities](#-message-with-inline-entities)
@@ -406,6 +416,7 @@ and the sections after it.
   - 📣 [`mentionAll`](#-mention) - Mention all group participants without requiring their JIDs in `mentions` or `mentionedJid`
   - 🔧 [`ephemeral`](#-ephemeral), [`groupStatus`](#%E2%80%8D%E2%80%8D-group-status), [`isLottie`](#-lottie-sticker), [`spoiler`](#-spoiler), [`viewOnce`](#%EF%B8%8F-view-once), [`viewOnceV2`](#%EF%B8%8F-view-once-v2), [`viewOnceV2Extension`](#%EF%B8%8F-view-once-v2-extension), [`interactiveAsTemplate`](#%EF%B8%8F-interactive) - Message wrappers
   - 🔒 [`secureMetaServiceLabel`](#%EF%B8%8F-secure-meta-service-label) - Secure meta service label on message
+  - 🙊 [`exclusive`](#-exclusive-message) - Send into a group addressed to one member only
   - 📄 [`raw`](#-raw) - Build your message manually **(DO NOT USE FOR EXPLOITATION)**
   - 🎞️ [`statusPrivacy`](#%EF%B8%8F-status-mention) - Control who receives a status broadcast (`contacts` | `allowlist` | `denylist`)
 
@@ -767,6 +778,30 @@ sock.sendMessage(jid, {
    quoted: message
 })
 ```
+
+### 🖼️ Image Poll
+
+A poll whose options are images instead of text.
+
+```javascript
+sock.sendMessage(jid, {
+   imagePoll: {
+      name: '🖼️ Pick your favourite',
+      selectableCount: 1, // --- Optional, defaults to 1
+      options: [
+         { name: 'Gambar 1', image: { url: 'https://example.com/1.jpg' } },
+         { name: 'Gambar 2', image: { url: 'https://example.com/2.jpg' } }
+      ]
+   }
+}, {
+   quoted: message
+})
+```
+
+Each option's image is uploaded first, because the option hash covers the uploaded media's `fileSha256` — `sha256(hex(sha256(name)) + base64(fileSha256))`, exported as `hashImagePollOption(name, fileSha256)` if you need it on its own. The parent goes out as `pollCreationMessageV3` with `pollContentType: IMAGE` carrying only the names and hashes; the images follow as one `pollCreationOptionImageMessage` each, tied back to the parent by a `MEDIA_POLL` association (the same mechanism albums use). A vote carries the hash, not the name.
+
+> [!WARNING]
+> This is a client-side implementation of a message type WhatsApp's proto defines but no Baileys fork ships a builder for. Treat it as experimental and check how it renders on your target client before relying on it.
 
 ### 💭 Button Response
 
@@ -2707,6 +2742,145 @@ sock.CLIENT_PERSIST_GQL_IDS;
 
 > [!WARNING]
 > These calls leave the WhatsApp WebSocket and hit Meta's HTTPS endpoints directly. They have no built-in timeout, so wrap them in your own if a hung request would stall your bot.
+
+### 🧩 A2UI Widget
+
+Declarative widgets sent as `interactiveMessage.bloksWidget`. Every builder method registers a component and returns its id, so a tree is written bottom-up.
+
+```javascript
+import { A2UI } from "@violetix/baileys";
+
+const ui = new A2UI();
+const title = ui.text("Halo!", { variant: "h1" });
+const button = ui.button(ui.text("Klik saya"), { action: { name: "noop" } });
+ui.root([ui.card(ui.column([title, button]))]);
+
+await sock.sendMessage(jid, { a2ui: ui, text: "Widget", footer: "A2UI" });
+
+// --- product list shortcut, its own payload shape
+const list = new A2UI().listCard({
+   title: "Menu",
+   items: [{ title: "Nasi Goreng", price: "Rp15.000" }, { title: "Es Teh", price: "Rp5.000" }]
+});
+await sock.sendMessage(jid, { a2ui: list, text: "Pesan menu" });
+
+// --- widget as the whole message, plus native flow buttons
+await sock.sendMessage(jid, {
+   a2ui: ui,
+   singleScreen: true,
+   nativeFlow: [{ text: "🌐 Visit", url: "https://example.com" }]
+});
+```
+
+| Component      | Builder                                                                  |
+| -------------- | ------------------------------------------------------------------------ |
+| `Text`         | `ui.text(text, { variant })` — `variant` defaults to `body`               |
+| `Image`        | `ui.image(url, { variant, fit })` — `fit` defaults to `cover`             |
+| `Video`        | `ui.video(url)`                                                          |
+| `Button`       | `ui.button(childId, { variant, action })`                                |
+| `Card` / `Column` / `Row` | `ui.card(childId)`, `ui.column(ids, { justify, align })`, `ui.row(ids)` |
+| `CheckBox` / `TextField` / `ChoicePicker` / `Divider` | `ui.checkbox(label, { value })`, `ui.textField(label, { variant })`, `ui.choicePicker(label, options, { variant, displayStyle, filterable })`, `ui.divider()` |
+
+Send options on the content: `text` (body), `footer`, `singleScreen` (no bubble around the widget), `nativeFlow` (this fork's usual [button shapes](#%EF%B8%8F-interactive)), `messageSecret`, `a2uiType`, `a2uiWrapped: false` (emit a bare `{ components }` payload instead of the `createSurface` envelope). `nativeFlowMessage` is always attached — it is what keys the interactive render and what makes the `<biz>` node go out.
+
+> [!WARNING]
+> Internal WhatsApp format. A send can succeed with no error while the widget renders as nothing on the recipient's client. Test on a throwaway number first.
+
+### 🙊 Exclusive Message
+
+Sends into a group but addressed to **one member**. Other members never receive the stanza at all, so there is nothing for them to see or decrypt.
+
+```javascript
+// the quoted message names the recipient — its author
+await sock.sendMessage(m.chat, { text: "Hi, only you can see this." }, { quoted: m, exclusive: true });
+
+// or address someone else explicitly, in the group's own addressing mode
+await sock.sendMessage(groupJid, { text: "psst" }, { exclusive: "43411111111111@lid" });
+```
+
+`exclusive: true` requires `quoted` — the quoted message's author is the only place the recipient comes from, and it already carries the group's addressing mode (a LID-addressed group quotes `@lid`, a PN one quotes `@s.whatsapp.net`), so nothing has to be mapped. Without a quote, or with a quote that has no `participant` (a 1:1 quote), the send throws. So does `exclusive` outside a group.
+
+How it works: the stanza goes out as `to=<group> participant=<member>` with per-device `pkmsg`/`msg` encryption instead of the group sender key, reusing the retry-resend path. A `skmsg` stanza is fanned out to the whole group by the server, so sender-key sends can never be targeted. One stanza per device of the recipient, all sharing the message id.
+
+> [!NOTE]
+> Your own linked devices are not addressed, so the message does not appear in the group on your phone — only `messages.upsert` fires locally (via `emitOwnEvents`). The recipient sees an ordinary group message; nothing marks it as private on their side.
+
+### 🚫 Ignoring Inbound Stanzas
+
+`sock.ignoreKey(input)` drops matching inbound stanzas **before any handler runs** — including the decryption and persistence paths. The ack is still sent, so the server stops redelivering them. It returns an unregister function.
+
+```javascript
+// --- Descriptor: drop everything from one peer
+const off = sock.ignoreKey({ remoteJid: "6281111111111@s.whatsapp.net" });
+
+// Only that peer's messages; receipts and presence still arrive
+sock.ignoreKey({ remoteJid: "6281111111111@s.whatsapp.net", only: ["message"] });
+
+// Several chats at once (array entries OR)
+sock.ignoreKey({ remoteJid: ["111111@g.us", "222222@g.us"] });
+
+// Your own outbound echoes from other devices
+sock.ignoreKey({ fromMe: true, only: ["message"] });
+
+off(); // unregister
+
+// --- Predicate: anything the descriptor cannot express
+sock.ignoreKey((m) => m.kind === "message" && isJidGroup(m.remoteJid ?? ""));
+sock.ignoreKey((m) => isJidStatusBroadcast(m.remoteJid ?? ""));
+```
+
+| Field         | Type                                                                                    | Notes                                                                                                                          |
+| ------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `remoteJid`   | `string \| string[]`                                                                    | Chat JID. Array entries OR. Also matched against the alt `sender_pn` / `sender_lid` attributes, so one JID form catches the other. |
+| `fromMe`      | `boolean`                                                                               | Whether the stanza was sent by this account, resolved against both your PN and LID.                                            |
+| `id`          | `string`                                                                                | Stanza id.                                                                                                                     |
+| `participant` | `string`                                                                                | Author in groups / broadcasts. Alt forms are matched too.                                                                      |
+| `only`        | `('message' \| 'receipt' \| 'notification' \| 'presence' \| 'chatstate' \| 'call')[]`   | Restrict to specific tags. Default: all six.                                                                                   |
+
+Top-level fields AND together; the `remoteJid` array ORs. At least one of `remoteJid` / `fromMe` / `id` / `participant` is required — empty descriptors throw, as do unknown `only` values.
+
+A predicate receives the already-parsed stanza: `{ kind, remoteJid, fromMe, id, participant }`, with `remoteJid` and `participant` device-stripped so they line up with `event.key.remoteJid`. Return `true` to drop. A predicate that throws is logged and the stanza is kept.
+
+> [!IMPORTANT]
+> `category='peer'` messages from your own devices are **never** dropped, whatever the filter says. They carry app-state key shares, history sync and PDO responses between your devices, so a `{ fromMe: true }` filter would otherwise swallow the app-state key share and leave the collections blocked on a key they re-request on every sync. The exemption applies only when the sender really is this account, so a foreign stanza cannot dodge a filter by stamping the attribute. Stream control and the auth-critical `success` / `failure` tags bypass filters as well.
+
+### 🛡️ Anchor Guard
+
+Detects payloads that force-close WhatsApp clients, deletes them, and optionally blocks the sender.
+
+```javascript
+import { createAnchorGuard, detectBug } from "@violetix/baileys";
+
+const guard = createAnchorGuard(sock, {
+  blockOnBug: true,
+  guardOutgoing: true, // also reject your own crash payloads before they are sent
+  onDetect: ({ direction, jid, reasons }) => console.log("🛡️", direction, jid, reasons),
+});
+
+// one-off check without attaching anything
+const { flagged, reasons } = detectBug(msg.message);
+
+guard.stop(); // detach listeners and unwrap sendMessage
+```
+
+Flags invisible and combining character floods, mention bombs, oversized native-flow / list / carousel payloads, `buttonParamsJson` that is broken or huge, excessive newlines, over-deep, over-wide and circular structures, and — when you pass `proto` — an encoded size over `maxBytes`.
+
+| Option                            | Default  | Description                                                                              |
+| --------------------------------- | -------- | ---------------------------------------------------------------------------------------- |
+| `autoDelete`                      | `true`   | Delete a flagged inbound message.                                                        |
+| `deleteMode`                      | `'auto'` | `'auto'` revokes your own messages and deletes others locally; `'everyone'` always revokes. |
+| `guardIncoming`                   | `true`   | Guard `messages.upsert`.                                                                 |
+| `guardOutgoing`                   | `false`  | Wrap `sock.sendMessage` and throw on a crash payload.                                    |
+| `blockOnBug`                      | `false`  | Block the sender of a flagged message.                                                   |
+| `selfOnly`                        | `false`  | Only guard your own chats.                                                               |
+| `burstThreshold` / `burstWindowMs` | `0` / `4000` | Messages from one sender inside the window before it counts as a burst. `0` disables. |
+| `kickOnBurst`                     | `false`  | Remove the sender from the group on burst (needs admin).                                 |
+| `guardGroupAdds`                  | `false`  | Flag / kick when a burst-flagged inviter adds you to a group.                             |
+| `metaAiNumbers`                   | `false`  | Guard Meta AI's own numbers instead of exempting them.                                   |
+| `thresholds`                      | `{}`     | Override any of `ANCHORGUARD_DEFAULTS`.                                                  |
+
+> [!NOTE]
+> `guardOutgoing` replaces `sock.sendMessage` with a wrapper, which is why it is off by default — turn it on knowingly if your own code also wraps `sendMessage`. `stop()` only unwinds its own wrapper, so a wrapper you installed afterwards survives.
 
 ### 📡 Events
 

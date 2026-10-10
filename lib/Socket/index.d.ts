@@ -636,6 +636,7 @@ declare function makeWASocket(config: import('../Types/Socket.js').SocketConfig)
     updateMemberLabel: (jid: any, memberLabel: any) => Promise<any>;
     updateMediaMessage: (message: any) => Promise<any>;
     sendMessage: (jid: any, content: any, options?: {}) => Promise<import("../index.js").proto.WebMessageInfo | undefined>;
+    groupStatus: (jid: any, content?: any, options?: {}) => Promise<import("../index.js").proto.WebMessageInfo | undefined>;
     executeWMexQuery: (variables: any, queryId: any, dataPath: any) => Promise<any>;
     newsletterCreate: (name: any, description: any) => Promise<{
         id: any;
@@ -875,6 +876,12 @@ declare function makeWASocket(config: import('../Types/Socket.js').SocketConfig)
     signalRepository: any;
     user: any;
     generateMessageTag: () => string;
+    /**
+     * Drops matching inbound stanzas before any handler — including the decryption and
+     * persistence paths — sees them. The ack is still sent so the server stops re-delivering.
+     * Returns an unregister function.
+     */
+    ignoreKey: (input: import('../Utils/ignore-key.js').WaIgnoreKeyInput) => () => void;
     query: (node: any, timeoutMs: any) => Promise<any>;
     waitForMessage: (msgId: any, timeoutMs?: any) => Promise<any>;
     waitForSocketOpen: () => Promise<void>;

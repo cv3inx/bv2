@@ -19,6 +19,7 @@ export function getAggregateResponsesInEventMessage({ eventResponses }: {
 }, meId: any): any[];
 export function extractUrlFromText(text: any): any;
 export function generateLinkPreviewIfRequired(text: any, getUrlInfo: any, logger: any): Promise<any>;
+export function hashImagePollOption(optionName: any, fileSha256?: Uint8Array | null): string;
 export function prepareWAMessageMedia(message: any, options: any): Promise<proto.Message>;
 export function prepareDisappearingMessageSettingContent(ephemeralExpiration: any): proto.Message;
 export function generateForwardMessageContent(message: any, forceForward: any): any;
