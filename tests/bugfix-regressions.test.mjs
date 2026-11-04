@@ -96,3 +96,18 @@ test('store keys LID chats consistently and update does not create phantom lists
     assert.deepEqual(await store.loadMessages('ghost@s.whatsapp.net', 5), []);
     assert.equal(store.messages['ghost@s.whatsapp.net'], undefined);
 });
+
+test('stream:error reasons map like zapo-js; unknown is reconnectable, not badSession', async () => {
+    const { getErrorCodeFromStreamError } = await import('../lib/Utils/generics.js');
+    const se = (attrs, child) => ({ tag: 'stream:error', attrs, content: child ? [child] : [] });
+    const code = n => getErrorCodeFromStreamError(n).statusCode;
+    assert.equal(code(se({}, { tag: 'conflict', attrs: { type: 'replaced' } })), 440);
+    assert.equal(code(se({}, { tag: 'conflict', attrs: {} })), 440);
+    assert.equal(code(se({}, { tag: 'conflict', attrs: { type: 'device_removed' } })), 401);
+    assert.equal(code(se({ code: '515' })), 515);
+    assert.equal(code(se({ code: '516' })), 401);
+    assert.equal(code(se({ code: '503' })), 503);
+    assert.equal(code(se({}, { tag: 'ack', attrs: { id: '1' } })), 428);
+    assert.equal(code(se({}, { tag: 'xml-not-well-formed', attrs: {} })), 428);
+    assert.equal(code(se({})), 428);
+});
