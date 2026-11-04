@@ -111,3 +111,91 @@ test('stream:error reasons map like zapo-js; unknown is reconnectable, not badSe
     assert.equal(code(se({}, { tag: 'xml-not-well-formed', attrs: {} })), 428);
     assert.equal(code(se({})), 428);
 });
+
+// keep-alive is a closure inside makeSocket; run just that function with fake deps and a fake clock
+const keepAliveHarness = async ({ intervalMs = 30000, graceMs = 30000 } = {}) => {
+    const { readFileSync } = await import('node:fs');
+    const vm = await import('node:vm');
+    const src = readFileSync(new URL('../lib/Socket/socket.js', import.meta.url), 'utf8');
+    const fn = src.slice(src.indexOf('    const startKeepAliveRequest = () => {'), src.indexOf('    /** i have no idea why this exists.'));
+    let now = 0;
+    const timers = [];
+    class FakeDate { constructor() { this.t = now; } getTime() { return this.t; } static now() { return now; } }
+    const h = { pings: 0, ended: null, pendingPong: [], pendingQueries: 0, lastDateRecv: undefined };
+    const ctx = vm.createContext({
+        Date: FakeDate, Math: Object.create(Math, { random: { value: () => 0.5 } }),
+        keepAliveIntervalMs: intervalMs, keepAliveGracePeriodMs: graceMs,
+        logger, ws: { isOpen: true }, S_WHATSAPP_NET: 's.whatsapp.net',
+        generateMessageTag: () => 'tag', DisconnectReason: { connectionLost: 408 },
+        Boom: class extends Error { constructor(m, o) { super(m); this.output = { statusCode: o.statusCode }; } },
+        end: err => { h.ended = err; },
+        safeSetTimeout: (f, ms) => { const t = { at: now + ms, f }; timers.push(t); return t; },
+        clearSafeTimer: t => { const i = timers.indexOf(t); if (i >= 0) timers.splice(i, 1); },
+        query: () => { h.pings++; return new Promise((res) => h.pendingPong.push(res)); },
+        h
+    });
+    vm.runInContext(`let keepAliveReq; let lastDateRecv; let pendingQueries = 0;
+        Object.defineProperty(h, 'recv', { set(v) { lastDateRecv = v; } });
+        Object.defineProperty(h, 'pq', { set(v) { pendingQueries = v; } });
+        ${fn}; startKeepAliveRequest(); h.cancel = () => keepAliveReq.cancel();`, ctx);
+    // advance the fake clock; `blockMs` simulates a stalled loop delaying timers past their due time
+    h.advance = async (ms, blockMs = 0) => {
+        const target = now + ms;
+        for (;;) {
+            timers.sort((a, b) => a.at - b.at);
+            const t = timers[0];
+            if (!t || t.at > target) break;
+            timers.shift();
+            now = t.at + blockMs;
+            t.f();
+            await new Promise(r => setImmediate(r));
+        }
+        now = Math.max(now, target);
+    };
+    h.pong = async () => { h.recv = new FakeDate(); h.pendingPong.splice(0).forEach(r => r({})); await new Promise(r => setImmediate(r)); };
+    h.receive = () => { h.recv = new FakeDate(); };
+    return h;
+};
+
+test('keep-alive: one ping in flight at a time', async () => {
+    const h = await keepAliveHarness();
+    await h.advance(15000);              // first tick (random 0.5 * interval/2 = 7.5s)
+    assert.equal(h.pings, 1);
+    h.receive();                         // link alive, but pong for ping #1 not processed yet
+    await h.advance(30000);
+    assert.equal(h.pings, 1, 'must not stack a second ping while the first is unanswered');
+    await h.pong();
+    await h.advance(30000);
+    assert.equal(h.pings, 2);
+    h.cancel();
+});
+
+test('keep-alive: skips ping while queries are pending and inbound is recent', async () => {
+    const h = await keepAliveHarness();
+    h.pq = 3;
+    await h.advance(7500);
+    await h.advance(20000);
+    h.receive();                         // traffic 10s before the next tick
+    await h.advance(10000);
+    assert.equal(h.pings, 0);
+    h.cancel();
+});
+
+test('keep-alive: silence past interval+grace ends the socket with 408', async () => {
+    const h = await keepAliveHarness();
+    await h.advance(7500);
+    h.receive();
+    await h.advance(60000);
+    assert.equal(h.ended, null, 'exactly interval+grace of silence is not yet lost');
+    await h.advance(30000);              // next tick sees 90s of silence
+    assert.equal(h.ended?.output.statusCode, 408);
+});
+
+test('keep-alive: a stalled event loop is not reported as connection lost', async () => {
+    const h = await keepAliveHarness();
+    await h.advance(7500);
+    await h.pong();
+    await h.advance(40000, 45000);       // timer fires 45s late
+    assert.equal(h.ended, null);
+    h.cancel();
+});
