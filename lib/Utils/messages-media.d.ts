@@ -57,6 +57,8 @@ export interface MediaEncryptionOptions {
     };
     saveOriginalFileIfRequired?: boolean;
     opts?: MediaFetchOptions;
+    /** Reuse an existing 32-byte media key instead of generating one (e.g. sticker-pack thumbnails). */
+    mediaKey?: Uint8Array;
 }
 export interface MediaDownloadOptions {
     startByte?: number;
