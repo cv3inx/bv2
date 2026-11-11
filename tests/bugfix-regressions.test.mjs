@@ -129,6 +129,9 @@ const keepAliveHarness = async ({ intervalMs = 30000, graceMs = 30000 } = {}) =>
         generateMessageTag: () => 'tag', DisconnectReason: { connectionLost: 408 },
         Boom: class extends Error { constructor(m, o) { super(m); this.output = { statusCode: o.statusCode }; } },
         end: err => { h.ended = err; },
+        // a lost keep-alive is a transport drop, not a dead session: makeSocket hands it to
+        // handleDisconnect, which reconnects in place or ends the socket when it gives up
+        handleDisconnect: err => { h.ended = err; },
         safeSetTimeout: (f, ms) => { const t = { at: now + ms, f }; timers.push(t); return t; },
         clearSafeTimer: t => { const i = timers.indexOf(t); if (i >= 0) timers.splice(i, 1); },
         query: () => { h.pings++; return new Promise((res) => h.pendingPong.push(res)); },
@@ -181,7 +184,7 @@ test('keep-alive: skips ping while queries are pending and inbound is recent', a
     h.cancel();
 });
 
-test('keep-alive: silence past interval+grace ends the socket with 408', async () => {
+test('keep-alive: silence past interval+grace drops the connection with 408', async () => {
     const h = await keepAliveHarness();
     await h.advance(7500);
     h.receive();

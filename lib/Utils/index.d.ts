@@ -24,6 +24,7 @@ export * from "./identity-change-handler.js";
 export * from "./stanza-ack.js";
 export * from "./ignore-key.js";
 export * from "./anchor-guard.js";
+export * from "./connection-manager.js";
 export * from "./a2ui.js";
 export * from "./meta-ai-msmsg.js";
 //# sourceMappingURL=index.d.ts.map
