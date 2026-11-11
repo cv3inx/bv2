@@ -44,3 +44,32 @@ test('user: falls back to the last known identity when creds.me is absent', asyn
     delete auth.creds.me;
     assert.equal(sock.user.id, '628999:2@s.whatsapp.net');
 });
+test('user: stays undefined and logs once when creds.me never existed', async t => {
+    const auth = { creds: { registered: true }, keys: {} };
+    const seen = [];
+    const log = Object.fromEntries(['trace', 'debug', 'info', 'warn', 'error'].map(n => [n, () => {}]));
+    log.child = () => log;
+    log.error = obj => seen.push(obj);
+    const sock = makeSocket({
+        waWebSocketUrl: 'ws://127.0.0.1:1/ws',
+        connectTimeoutMs: 1,
+        keepAliveIntervalMs: 60_000,
+        keepAliveGracePeriodMs: 1_000,
+        defaultQueryTimeoutMs: 60_000,
+        qrTimeout: 60_000,
+        browser: ['Test', 'Chrome', '1.0'],
+        logger: log,
+        auth,
+        version: [2, 3000, 0],
+        shouldSyncHistoryMessage: () => true,
+        transactionOpts: { maxCommitRetries: 1, delayBetweenTriesMs: 0 },
+        makeSignalRepository: makeLibSignalRepository
+    });
+    sock.ws.on('error', () => {});
+    sock.ws.on('close', () => {});
+    t.after(() => sock.end(undefined).catch(() => {}));
+    assert.equal(sock.user, undefined);
+    assert.equal(sock.user, undefined);
+    assert.equal(seen.length, 1, 'the missing-identity diagnostic fires once per socket');
+    assert.equal(seen[0].registered, true);
+});
