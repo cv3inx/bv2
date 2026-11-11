@@ -41,6 +41,11 @@ export namespace DEFAULT_CONNECTION_CONFIG {
     export let browser: any[];
     export let waWebSocketUrl: string;
     export let connectTimeoutMs: number;
+    export let closeTimeoutMs: number;
+    export let autoReconnect: boolean;
+    export let reconnectDelayMs: number;
+    export let maxReconnectDelayMs: number;
+    export let maxReconnectAttempts: number;
     export let keepAliveIntervalMs: number;
     export let logger: any;
     export let emitOwnEvents: boolean;

@@ -890,6 +890,7 @@ declare function makeWASocket(config: import('../Types/Socket.js').SocketConfig)
     logout: (msg: any) => Promise<void>;
     end: (error: any) => Promise<void>;
     registerSocketEndHandler: (handler: any) => void;
+    registerSocketReconnectHandler: (handler: any) => void;
     onUnexpectedError: (err: any, msg: any) => void;
     uploadPreKeys: (count?: number) => Promise<void>;
     uploadPreKeysToServerIfRequired: () => Promise<void>;
