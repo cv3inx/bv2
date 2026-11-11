@@ -875,6 +875,8 @@ declare function makeWASocket(config: import('../Types/Socket.js').SocketConfig)
     };
     signalRepository: any;
     user: any;
+    /** true while the transport is repairing itself; do not build a second socket for the account */
+    isReconnecting: boolean;
     generateMessageTag: () => string;
     /**
      * Drops matching inbound stanzas before any handler — including the decryption and
