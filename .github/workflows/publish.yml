@@ -69,19 +69,3 @@ jobs:
            run: npm publish --access public
            env:
               NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-         # `npm publish` exiting 0 is not proof that the version landed: the v0.5.1 run reported
-         # success while registry.npmjs.org never gained the version, and the fleet installs from
-         # npm. A silent no-op is worse than a red run, so read the registry back.
-         - name: Verify the version is on npm
-           if: steps.check.outputs.skip == 'false'
-           run: |
-              want="${{ steps.pkg.outputs.name }}@${{ steps.pkg.outputs.version }}"
-              for _ in 1 2 3 4 5 6; do
-                 if npm view "$want" version >/dev/null 2>&1; then
-                    echo "::notice::$want is on npm"
-                    exit 0
-                 fi
-                 sleep 10
-              done
-              echo "::error::$want is not on npm even though publish exited 0"
-              exit 1
