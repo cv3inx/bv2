@@ -44,6 +44,17 @@ test('user: falls back to the last known identity when creds.me is absent', asyn
     delete auth.creds.me;
     assert.equal(sock.user.id, '628999:2@s.whatsapp.net');
 });
+test('user: an id-less creds.me never shadows the known identity', async t => {
+    const { sock, auth } = makeSocketForTest();
+    t.after(() => sock.end(undefined).catch(() => {}));
+    // the shape that caused the crash: `me` present but only a lid, so `me` is truthy and
+    // `sock.user.id` is undefined for a host that reads it unguarded
+    auth.creds.me = { lid: '123456789:1@lid' };
+    assert.equal(sock.user.id, '628123456789:1@s.whatsapp.net');
+    // and an update carrying that shape must not become the new fallback
+    sock.ev.emit('creds.update', { me: { lid: '123456789:1@lid' } });
+    assert.equal(sock.user.id, '628123456789:1@s.whatsapp.net');
+});
 test('user: stays undefined and logs once when creds.me never existed', async t => {
     const auth = { creds: { registered: true }, keys: {} };
     const seen = [];
