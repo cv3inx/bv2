@@ -19,6 +19,24 @@ export function decryptPollVote({ encPayload, encIv }: {
  * @param ctx additional info about the event required for decryption
  * @returns event response message
  */
+export function decryptPollVoteWithFallback(vote: {
+    encPayload: Uint8Array;
+    encIv: Uint8Array;
+}, ctx: {
+    pollCreatorJids: (string | undefined | null)[];
+    voterJids: (string | undefined | null)[];
+    pollMsgId: string;
+    pollEncKey: Uint8Array;
+}): proto.Message.PollVoteMessage;
+export function decryptEventResponseWithFallback(response: {
+    encPayload: Uint8Array;
+    encIv: Uint8Array;
+}, ctx: {
+    eventCreatorJids: (string | undefined | null)[];
+    responderJids: (string | undefined | null)[];
+    eventMsgId: string;
+    eventEncKey: Uint8Array;
+}): proto.Message.EventResponseMessage;
 export function decryptEventResponse({ encPayload, encIv }: {
     encPayload: any;
     encIv: any;

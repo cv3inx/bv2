@@ -1,5 +1,5 @@
 export default makeWASocket;
-declare function makeWASocket(config: any): {
+declare function makeWASocket(config: import('../Types/Socket.js').SocketConfig): {
     /** from ./interop.js */
     fetchIntegrators: (...args: any[]) => any;
     acceptInteropTOS: (...args: any[]) => any;
@@ -636,6 +636,7 @@ declare function makeWASocket(config: any): {
     updateMemberLabel: (jid: any, memberLabel: any) => Promise<any>;
     updateMediaMessage: (message: any) => Promise<any>;
     sendMessage: (jid: any, content: any, options?: {}) => Promise<import("../index.js").proto.WebMessageInfo | undefined>;
+    groupStatus: (jid: any, content?: any, options?: {}) => Promise<import("../index.js").proto.WebMessageInfo | undefined>;
     executeWMexQuery: (variables: any, queryId: any, dataPath: any) => Promise<any>;
     newsletterCreate: (name: any, description: any) => Promise<{
         id: any;
@@ -862,18 +863,7 @@ declare function makeWASocket(config: any): {
     removeQuickReply: (timestamp: any) => Promise<void>;
     type: string;
     ws: import("./Client/websocket.js").WebSocketClient;
-    ev: {
-        process(handler: any): () => void;
-        emit(event: any, evData: any): any;
-        isBuffering(): boolean;
-        buffer: () => void;
-        flush: () => boolean;
-        createBufferedFunction(work: any): (...args: any[]) => Promise<any>;
-        on: (...args: any[]) => any;
-        off: (...args: any[]) => any;
-        removeAllListeners: (...args: any[]) => any;
-        destroy(): void;
-    };
+    ev: import('../Types/Events.js').BaileysEventEmitter;
     authState: {
         creds: any;
         keys: {
@@ -886,6 +876,12 @@ declare function makeWASocket(config: any): {
     signalRepository: any;
     user: any;
     generateMessageTag: () => string;
+    /**
+     * Drops matching inbound stanzas before any handler — including the decryption and
+     * persistence paths — sees them. The ack is still sent so the server stops re-delivering.
+     * Returns an unregister function.
+     */
+    ignoreKey: (input: import('../Utils/ignore-key.js').WaIgnoreKeyInput) => () => void;
     query: (node: any, timeoutMs: any) => Promise<any>;
     waitForMessage: (msgId: any, timeoutMs?: any) => Promise<any>;
     waitForSocketOpen: () => Promise<void>;
@@ -899,7 +895,7 @@ declare function makeWASocket(config: any): {
     uploadPreKeysToServerIfRequired: () => Promise<void>;
     digestKeyBundle: () => Promise<void>;
     rotateSignedPreKey: () => Promise<void>;
-    requestPairingCode: (phoneNumber: any, customPairingCode: any) => Promise<any>;
+    requestPairingCode: (phoneNumber: string, customPairingCode?: string) => Promise<string>;
     updateServerTimeOffset: ({ attrs }: {
         attrs: any;
     }) => void;
@@ -917,6 +913,9 @@ declare function makeWASocket(config: any): {
         username: string;
         jid: any;
         exists: boolean;
+        keyRequired: boolean;
+        isBusiness: boolean;
+        pnJid: string | undefined;
     }[]>;
     fetchUsername: (...jids: any[]) => Promise<{
         jid: any;

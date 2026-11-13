@@ -142,6 +142,9 @@ export function makeChatsSocket(config: any): {
         username: string;
         jid: any;
         exists: boolean;
+        keyRequired: boolean;
+        isBusiness: boolean;
+        pnJid: string | undefined;
     }[]>;
     fetchUsername: (...jids: any[]) => Promise<{
         jid: any;

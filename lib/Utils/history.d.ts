@@ -74,3 +74,4 @@ export function downloadAndProcessHistorySyncNotification(msg: any, options: any
 export function getHistoryMsg(message: any): any;
 import { proto } from '../../WAProto/index.js';
 //# sourceMappingURL=history.d.ts.map
+export function decodeHistorySyncStreaming(buffer: Uint8Array, onConversation: (conversation: proto.IConversation) => void): proto.HistorySync;
